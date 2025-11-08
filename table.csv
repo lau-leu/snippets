@@ -1,4 +1,0 @@
-langage,nom,titre,code,description,tags
-bash,cmd_wget,Télécharger un fichier avec wget,wget "https://path/file",Permet de télécharger des fichiers sur internet,'cmd,wget,download,file'
-python,parse_json,Parser un fichier JSON,import json\nwith …,Parse un fichier JSON en Python,'python,json,parsing'
-,,,ls -al ‘path/dossier’,permet d’afficher le détail des éléments du dossier,'ls,folder,permission'
