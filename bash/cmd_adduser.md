@@ -4,5 +4,5 @@
 sudo adduser -m \nom\
 ```
 
-**Description** : 
-**Tags** : Ajoute un nouvel utilisateur avec un répertoire personnel.,linux,adduser,user,add
+**Description** : Ajoute un nouvel utilisateur avec un répertoire personnel. 
+**Tags** : linux,adduser,user,add

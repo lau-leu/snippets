@@ -1,3 +1,6 @@
+# ajout d'un snippet
+
+```bash
 #!/bin/bash
 
 # Chemin relatif au dossier courant
@@ -31,3 +34,7 @@ EOL
 git add .
 git commit -m "Ajout du snippet $name ($lang)"
 echo "Snippet ajouté : $file_path"
+```
+
+**Description** : code permettant d'ajouter un snippet à ceux dejà existant
+**Tags** : code,snippet,add,bash
