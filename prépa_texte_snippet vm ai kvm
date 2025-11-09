@@ -39,7 +39,7 @@ sudo wget https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso
 # - Système VM + environnements Python : NVMe (rapide)
 # - Datasets volumineux : WD Red en pool (capacité)
 # - Modèles entraînés : WD Red en pool (sauvegarde)
-```
+#```
 
 ### Dimensionnement précis
 

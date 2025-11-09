@@ -1,0 +1,103 @@
+#1. Connecter le disque SSD
+# Branchez votre disque SSD à un port USB disponible.
+
+#2. Identifier le disque
+# Ouvrez un terminal et tapez la commande suivante pour lister les disques connectés :
+## bash ##
+
+lsblk
+
+# ou
+sudo fdisk -l
+
+## ##
+# Repérez votre disque SSD dans la liste (par exemple, /dev/sdb1 ou /dev/sdc1).
+
+#3. Créer un point de montage
+# Choisissez ou créez un dossier où monter le disque. Par exemple :
+## bash ##
+
+sudo mkdir /mnt/mon_ssd
+
+## ##
+
+#4. Monter le disque
+# Utilisez la commande mount pour monter le disque sur le point de montage :
+## bash ##
+
+sudo mount /dev/sdX1 /mnt/mon_ssd
+
+## ##
+# Remplacez sdX1 par le nom réel de votre partition (ex: sdb1).
+
+#5. Vérifier le montage
+# Pour confirmer que le disque est bien monté, utilisez :
+## bash ##
+
+df -h
+
+# ou
+lsblk
+
+## ##
+# Vous devriez voir votre disque dans la liste.
+
+#6. (Optionnel) Monter automatiquement au démarrage
+# Pour monter automatiquement le disque au démarrage, éditez le fichier /etc/fstab :
+## bash ##
+
+sudo nano /etc/fstab
+
+## ##
+# Ajoutez une ligne comme celle-ci (adaptez les valeurs selon votre configuration) :
+## nano ##
+
+# ...
+/dev/sdX1  /mnt/mon_ssd  ext4  defaults  0  2
+# ...
+
+## ##
+#Sauvegardez et quittez (Ctrl+O, Entrée, Ctrl+X).
+
+#7. Démonter le disque
+# Quand vous souhaitez retirer le disque, démontez-le d'abord :
+## bash ##
+
+sudo umount /mnt/mon_ssd
+
+## ##
+
+# Remarques importantes
+
+# Format du système de fichiers : Assurez-vous que le disque est formaté (ex: ext4, NTFS, FAT32). Si ce n'est pas le cas, utilisez gparted ou mkfs pour le formater.
+# Permissions : Si vous avez des problèmes de permissions, utilisez chmod ou chown pour ajuster les droits.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

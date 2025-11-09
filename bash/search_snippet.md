@@ -1,3 +1,6 @@
+# recherche de snippets
+
+```bash
 #!/bin/bash
 
 # Chemin absolu vers le dossier snippets
@@ -36,3 +39,7 @@ elif [ "$option" = "2" ]; then
 else
     echo "Option invalide."
 fi
+```
+
+**Description** : code permettant de rechercher existant
+**Tags** : code,snippet,search,bash

@@ -1,8 +1,8 @@
 # Monter un partage CIFS
 
 ```bash
-sudo mount -t cifs '//<ip>/<folder>' /<mount> -o vers=<smb_version>
+sudo mount -t cifs '//<ip>/<folder>' /<mount> -o vers=<smb_version>,user=<user>,rw,uid=userlocal,gid=userlocal
 ```
 
-**Description** : user=<user>
-**Tags** : rw,uid=userlocal,gid=userlocal,Monte un partage CIFS avec les options spécifiées.,linux,mount,cifs,share
+**Description** : Monte un partage CIFS avec les options spécifiées.
+**Tags** : linux,mount,cifs,share
