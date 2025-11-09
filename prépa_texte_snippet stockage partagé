@@ -1,0 +1,38 @@
+
+
+
+# Configuration du stockage partagé sur WD Red
+## bash ##
+
+# Identifier vos disques
+lsblk
+# Supposons : sdb, sdc, sdd = vos 3 WD Red
+
+# Option A : LVM (Simple et flexible)
+sudo pvcreate /dev/sdb /dev/sdc /dev/sdd
+sudo vgcreate vg-data-ai /dev/sdb /dev/sdc /dev/sdd
+sudo lvcreate -L 500G -n lv-datasets vg-data-ai
+sudo lvcreate -L 500G -n lv-models vg-data-ai
+
+# Formater
+sudo mkfs.ext4 /dev/vg-data-ai/lv-datasets
+sudo mkfs.ext4 /dev/vg-data-ai/lv-models
+
+# Monter sur l'hôte
+sudo mkdir -p /mnt/ai-storage/{datasets,models}
+sudo mount /dev/vg-data-ai/lv-datasets /mnt/ai-storage/datasets
+sudo mount /dev/vg-data-ai/lv-models /mnt/ai-storage/models
+
+# Rendre permanent
+echo '/dev/vg-data-ai/lv-datasets /mnt/ai-storage/datasets ext4 defaults 0 2' | sudo tee -a /etc/fstab
+echo '/dev/vg-data-ai/lv-models /mnt/ai-storage/models ext4 defaults 0 2' | sudo tee -a /etc/fstab
+
+## ##
+
+
+
+
+
+
+
+
