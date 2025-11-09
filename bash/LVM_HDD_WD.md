@@ -11,8 +11,41 @@ lsblk
 # Option A : LVM (Simple et flexible)
 sudo pvcreate /dev/sdb /dev/sdc /dev/sdd
 sudo vgcreate vg-data-ai /dev/sdb /dev/sdc /dev/sdd
+
+
+# La commande vgcreate est utilisée sous Linux pour créer un groupe de volumes (Volume Group, VG) dans le système de gestion de volumes logiques (LVM, Logical Volume Manager). Un groupe de volumes permet de regrouper plusieurs volumes physiques (PV, Physical Volumes) en une seule entité logique, à partir de laquelle vous pouvez ensuite créer des volumes logiques (LV, Logical Volumes).
+
+# vgcreate <nom_du_groupe_de_volumes> <volume_physique_1> [volume_physique_2 ...]
+# options de la commande
+# -s <taille> # Définit la taille des extents physiques (en Mo, Go, etc.). Par défaut, LVM utilise 4 Mo.
+# -l <nombre> # Spécifie le nombre maximal d'extents logiques.
+# -p <nombre> # Définit le nombre maximal de volumes physiques dans le groupe.
+
+# Vérification
+# Pour vérifier que le groupe de volumes a bien été créé, utilisez :
+## bash ##
+
+vgdisplay
+
+# ou
+
+vgs
+
+## ##
+
+# À quoi ça sert ?
+# - Flexibilité : Ajoutez ou retirez des volumes physiques sans interruption de service.
+# - Gestion centralisée : Créez des volumes logiques de tailles variables à partir du groupe.
+# - Optimisation de l'espace : Utilisez efficacement l'espace disque disponible.
+
+# Prochaines étapes
+# Une fois le groupe de volumes créé, vous pouvez créer des volumes logiques avec lvcreate.
+## bash ##
+
 sudo lvcreate -L 500G -n lv-datasets vg-data-ai
 sudo lvcreate -L 500G -n lv-models vg-data-ai
+
+## ##
 
 # Formater
 sudo mkfs.ext4 /dev/vg-data-ai/lv-datasets
