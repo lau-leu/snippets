@@ -32,28 +32,28 @@ sudo wget https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso
 # - Système VM + environnements Python : NVMe (rapide)
 # - Datasets volumineux : WD Red en pool (capacité)
 # - Modèles entraînés : WD Red en pool (sauvegarde)
-```
+#```
 
 ### Dimensionnement précis
 
-**150 GB c'est INSUFFISANT** pour l'IA. Voici pourquoi :
-```
-Breakdown typique :
-- Système Ubuntu : 10-15 GB
-- Environnements Python (venv) : 5-10 GB
-- Jupyter + notebooks : 2-5 GB
-- Cache pip/conda : 3-5 GB
-- Modèles pré-entraînés :
-  * LLaMA 7B : ~13 GB
-  * LLaMA 13B : ~26 GB
-  * Stable Diffusion XL : ~12 GB
-  * Mistral 7B : ~14 GB
-  * Whisper Large : ~3 GB
-- Datasets typiques :
-  * ImageNet subset : 20-50 GB
-  * Common Crawl sample : 10-100 GB
-  * Datasets personnalisés : Variable
-- Checkpoints d'entraînement : 10-50 GB par projet
+#**150 GB c'est INSUFFISANT** pour l'IA. Voici pourquoi :
+#```
+#Breakdown typique :
+#- Système Ubuntu : 10-15 GB
+#- Environnements Python (venv) : 5-10 GB
+#- Jupyter + notebooks : 2-5 GB
+#- Cache pip/conda : 3-5 GB
+#- Modèles pré-entraînés :
+#  * LLaMA 7B : ~13 GB
+#  * LLaMA 13B : ~26 GB
+#  * Stable Diffusion XL : ~12 GB
+#  * Mistral 7B : ~14 GB
+#  * Whisper Large : ~3 GB
+#- Datasets typiques :
+#  * ImageNet subset : 20-50 GB
+#  * Common Crawl sample : 10-100 GB
+#  * Datasets personnalisés : Variable
+#- Checkpoints d'entraînement : 10-50 GB par projet
 
 ## ##
 # Recommandation : 300-500 GB minimum sur NVMe
