@@ -1,0 +1,209 @@
+# création d'un LVM
+
+```bash
+#1. Configuration du stockage partagé sur WD Red
+## bash ##
+
+# Identifier vos disques
+lsblk
+# Supposons : sdb, sdc, sdd = vos 3 WD Red
+
+# Option A : LVM (Simple et flexible)
+sudo pvcreate /dev/sdb /dev/sdc /dev/sdd
+sudo vgcreate vg-data-ai /dev/sdb /dev/sdc /dev/sdd
+sudo lvcreate -L 500G -n lv-datasets vg-data-ai
+sudo lvcreate -L 500G -n lv-models vg-data-ai
+
+# Formater
+sudo mkfs.ext4 /dev/vg-data-ai/lv-datasets
+sudo mkfs.ext4 /dev/vg-data-ai/lv-models
+
+# Monter sur l'hôte
+sudo mkdir -p /mnt/ai-storage/{datasets,models}
+sudo mount /dev/vg-data-ai/lv-datasets /mnt/ai-storage/datasets
+sudo mount /dev/vg-data-ai/lv-models /mnt/ai-storage/models
+
+# Rendre permanent
+echo '/dev/vg-data-ai/lv-datasets /mnt/ai-storage/datasets ext4 defaults 0 2' | sudo tee -a /etc/fstab
+echo '/dev/vg-data-ai/lv-models /mnt/ai-storage/models ext4 defaults 0 2' | sudo tee -a /etc/fstab
+
+## ##
+
+#2. STOCKAGE PARTAGÉ ENTRE VMs - CONFIGURATION DÉTAILLÉE
+# Méthode 1 : Virtio-FS (Recommandé - Performant et Simple)
+# Sur l'hôte Debian :
+## bash ##
+
+# Créer les répertoires partagés
+sudo mkdir -p /srv/shared-vms/ai-datasets
+sudo mkdir -p /srv/shared-vms/ai-models
+sudo mkdir -p /srv/shared-vms/common-scripts
+
+# Permissions
+sudo chown -R libvirt-qemu:kvm /srv/shared-vms
+sudo chmod -R 775 /srv/shared-vms
+
+# Créer un lien symbolique vers votre stockage WD Red
+sudo ln -s /mnt/ai-storage/datasets /srv/shared-vms/ai-datasets-hdd
+sudo ln -s /mnt/ai-storage/models /srv/shared-vms/ai-models-hdd
+
+## ##
+# Configurer le partage dans la VM :
+## bash ##
+
+# Éditer la VM
+sudo virsh edit vm-ia
+
+## ##
+# Ajouter dans <devices> :
+## xml ##
+
+<filesystem type='mount' accessmode='passthrough'>
+  <driver type='virtiofs' queue='1024'/>
+  <source dir='/srv/shared-vms/ai-datasets'/>
+  <target dir='ai-datasets'/>
+</filesystem>
+
+<filesystem type='mount' accessmode='passthrough'>
+  <driver type='virtiofs' queue='1024'/>
+  <source dir='/srv/shared-vms/ai-models'/>
+  <target dir='ai-models'/>
+</filesystem>
+
+<filesystem type='mount' accessmode='passthrough'>
+  <driver type='virtiofs' queue='1024'/>
+  <source dir='/mnt/ai-storage/datasets'/>
+  <target dir='ai-datasets-hdd'/>
+</filesystem>
+
+## ##
+# Monter dans la VM Ubuntu :
+## bash ##
+
+# Dans la VM
+sudo mkdir -p /mnt/datasets /mnt/models /mnt/datasets-hdd
+
+# Ajouter à /etc/fstab
+echo 'ai-datasets /mnt/datasets virtiofs defaults 0 0' | sudo tee -a /etc/fstab
+echo 'ai-models /mnt/models virtiofs defaults 0 0' | sudo tee -a /etc/fstab
+echo 'ai-datasets-hdd /mnt/datasets-hdd virtiofs defaults 0 0' | sudo tee -a /etc/fstab
+
+sudo mount -a
+
+## ##
+
+#Méthode 2 : NFS (Alternative - Plus universel)
+# Sur l'hôte Debian :
+## bash ##
+
+# Installer NFS
+sudo apt install nfs-kernel-server
+
+# Configurer les exports
+sudo nano /etc/exports
+
+## ##
+## nano ##
+
+#```
+
+**Ajouter :**
+#```
+/srv/shared-vms/ai-datasets 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
+/srv/shared-vms/ai-models 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
+/mnt/ai-storage/datasets 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+## ##
+## bash ##
+
+# Redémarrer NFS
+sudo exportfs -ra
+sudo systemctl restart nfs-kernel-server
+
+# Vérifier
+showmount -e localhost
+
+## ##
+# Dans chaque VM (Ubuntu, Debian test, etc.) :
+## bash ##
+
+# Installer le client NFS
+sudo apt install nfs-common
+
+# Créer les points de montage
+sudo mkdir -p /mnt/shared/{datasets,models}
+
+# Monter (remplacer 192.168.122.1 par l'IP de votre hôte sur virbr0)
+sudo mount -t nfs 192.168.122.1:/srv/shared-vms/ai-datasets /mnt/shared/datasets
+sudo mount -t nfs 192.168.122.1:/srv/shared-vms/ai-models /mnt/shared/models
+
+# Rendre permanent
+echo '192.168.122.1:/srv/shared-vms/ai-datasets /mnt/shared/datasets nfs defaults 0 0' | sudo tee -a /etc/fstab
+echo '192.168.122.1:/srv/shared-vms/ai-models /mnt/shared/models nfs defaults 0 0' | sudo tee -a /etc/fstab
+
+## ##
+
+#Méthode 3 : Disque virtuel partagé (Read-only)
+# Pour des modèles en lecture seule :
+## bash ##
+
+# Créer un disque de modèles
+sudo qemu-img create -f qcow2 /var/lib/libvirt/images/shared-models.qcow2 200G
+
+# L'attacher en lecture seule à plusieurs VMs
+sudo virsh attach-disk vm-ia /var/lib/libvirt/images/shared-models.qcow2 vdb --cache none --persistent --readonly
+sudo virsh attach-disk vm-ubuntu /var/lib/libvirt/images/shared-models.qcow2 vdb --cache none --persistent --readonly
+
+## ##
+# Script de gestion du stockage partagé
+# Créer /usr/local/bin/vm-storage-manager.sh :
+## bash ##
+
+#!/bin/bash
+
+SHARED_BASE="/srv/shared-vms"
+HDD_BASE="/mnt/ai-storage"
+
+show_usage() {
+    df -h "$SHARED_BASE"/* "$HDD_BASE"/* 2>/dev/null
+    echo ""
+    du -sh "$SHARED_BASE"/* "$HDD_BASE"/* 2>/dev/null
+}
+
+list_files() {
+    local path=$1
+    echo "=== Contenu de $path ==="
+    ls -lh "$path"
+}
+
+sync_models() {
+    echo "Synchronisation des modèles NVMe -> HDD..."
+    rsync -avh --progress "$SHARED_BASE/ai-models/" "$HDD_BASE/models/"
+}
+
+case "$1" in
+    usage)
+        show_usage
+        ;;
+    list)
+        list_files "$2"
+        ;;
+    sync)
+        sync_models
+        ;;
+    *)
+        echo "Usage: $0 {usage|list <path>|sync}"
+        exit 1
+        ;;
+esac
+
+## ##
+## bash ##
+
+sudo chmod +x /usr/local/bin/vm-storage-manager.sh
+
+## ##
+```
+
+**Description** : étapes de création d'une LVM, Logical Volume Manager. Un groupe de volumes permet de regrouper plusieurs volumes physiques (PV, Physical Volumes) en une seule entité logique, à partir de laquelle vous pouvez ensuite créer des volumes logiques (LV, Logical Volumes).
+**Tags** : lvm,LVM,hdd,sata,pvcreate,vgcreate,lvcreate,virtuel,NFS,nfs
