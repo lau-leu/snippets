@@ -94,7 +94,7 @@ sudo virsh edit vm-ia
     <cache mode='passthrough'/>
     <feature policy='require' name='topoext'/>
   </cpu>
-
+### ci-dessous attention peut planter au demarrage de la vm ####
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
