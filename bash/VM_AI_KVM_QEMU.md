@@ -152,7 +152,7 @@ sudo virsh edit vm-ia
     <cache mode='passthrough'/>
     <feature policy='require' name='topoext'/>
   </cpu>
-
+### ci-dessous attention peut planter au demarrage de la vm ####
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
@@ -224,14 +224,14 @@ sudo virsh iface-bridge enp0s31f6 br0
 sudo virsh edit vm-ia
 
 ## ##
+### ne fonctionne pas ###
 # Ajouter dans la section <devices> :
 ## xml ##
-
 <qemu:commandline>
   <qemu:arg value='-netdev'/>
   <qemu:arg value='user,id=net0,hostfwd=tcp::8888-:8888'/>
 </qemu:commandline>
-
+### ###
 ## ##
 
 #Étape 10 : Lancer Jupyter Lab
@@ -243,7 +243,7 @@ jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 
 ## ##
 # Accéder depuis votre Debian hôte : http://localhost:8888
-
+http://192.168.1.198:8888
 #Étape 11 : Script de gestion pratique
 # Créer /usr/local/bin/vm-ia-manage.sh sur votre hôte :
 ## bash ##

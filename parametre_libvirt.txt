@@ -1,0 +1,106 @@
+angage: bash
+nom: libvirt_autorisation_parametre
+titre: parametrage autorisation libvirt
+description: parametrage autorisation libvirt afin d'éviter sudo
+tags: libvirt,sudo,virsh,droit,user,groups,vm
+
+#Vérifie les logs de libvirt pour des erreurs :
+sudo journalctl -u libvirtd -b
+
+# s'il faut un sudo pour:
+virsh list --all
+
+# Vérifier les permissions du groupe libvirt
+groups
+
+# si pas de libvirt dans la list
+sudo usermod -aG libvirt $USER
+
+# commencer part vérifier les permission
+ls -l /var/run/libvirt/
+
+# Les sockets (libvirt-sock, libvirt-sock-ro, etc.) doivent avoir des permissions comme srw-rw---- et appartenir à root:libvirt.
+
+sudo chown root:libvirt /var/run/libvirt/libvirt-sock
+sudo chown root:libvirt /var/run/libvirt/libvirt-sock-ro
+sudo chmod 660 /var/run/libvirt/libvirt-sock
+sudo chmod 660 /var/run/libvirt/libvirt-sock-ro
+
+# Vérifier la configuration de polkit
+### pas sur du besoin essayer d'abord la variable ci-dessous
+# Crée ou vérifie le fichier /etc/polkit-1/rules.d/50-libvirt.rules :
+sudo nano /etc/polkit-1/rules.d/50-libvirt.rules
+
+### nano - javascript ###
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.libvirt.unix.manage" &&
+        subject.isInGroup("libvirt")) {
+        return polkit.Result.YES;
+    }
+});
+### fin nano - javascript ###
+sudo systemctl restart polkit
+
+
+# tester:
+export LIBVIRT_DEFAULT_URI="qemu:///system"
+# puis essayer sans sudo
+
+# Rendre la variable permanente
+echo 'export LIBVIRT_DEFAULT_URI="qemu:///system"' >> ~/.bashrc
+source ~/.bashrc
+
+
+### erreur snapshot ###
+# sudo virsh snapshot-create-as vm-ia --name "install-complete" --description "Installation de base terminée"error: Opération non prise en charge : internal snapshots of a VM with pflash based firmware require QCOW2 nvram format
+
+# Vérifie le format actuel du fichier NVRAM :
+sudo ls /var/lib/libvirt/qemu/nvram/
+
+# -> debian13_VARS.fd  vm-ia_VARS.fd  vm-ia_VARS.qcow2  win11_VARS.fd
+
+sudo qemu-img info /var/lib/libvirt/qemu/nvram/vm-ia_VARS.fd
+
+# -> image: /var/lib/libvirt/qemu/nvram/vm-ia_VARS.fd
+# -> file format: raw
+# -> virtual size: 528 KiB (540672 bytes)
+# -> disk size: 528 KiB
+# -> Child node '/file':
+# ->     filename: /var/lib/libvirt/qemu/nvram/vm-ia_VARS.fd
+# ->     protocol type: file
+# ->     file length: 528 KiB (540672 bytes)
+# ->     disk size: 528 KiB
+
+# Si le format est raw, convertis-le en QCOW2 :
+sudo qemu-img convert -f raw -O qcow2 /var/lib/libvirt/qemu/nvram/vm-ia_VARS.fd /var/lib/libvirt/qemu/nvram/vm-ia_VARS.qcow2
+
+# Édite la configuration XML de la VM
+
+virsh edit vm-ia
+
+# Cherche la section <nvram> et mets à jour le chemin vers le nouveau fichier .qcow2
+
+### xml ###
+<nvram template='/usr/share/OVMF/OVMF_VARS_4M.ms.fd' format='qcow2'>/var/lib/libvirt/qemu/nvram/vm-ia_VARS.qcow2</nvram>
+### fin xml ###
+
+# Redémarrer la VM
+# et faire un snapshot
+
+sudo virsh snapshot-create-as vm-ia-system --name "install-complete" --description "Installation de base terminée"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
