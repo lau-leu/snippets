@@ -119,6 +119,322 @@ sudo lvs -a -o +devices vg-ai-data
 
 
 #Étape 4 : Attendre la synchronisation initiale
+# Le copy_percent doit atteindre 100.00
+# Cela peut prendre plusieurs heures selon la taille
+
+# ===================================================================
+# ÉTAPE 5 : Formater (APRÈS synchronisation complète)
+# ===================================================================
+
+sudo mkfs.ext4 /dev/vg-ai-data/lv-datasets
+sudo mkfs.ext4 /dev/vg-ai-data/lv-models
+
+# mke2fs 1.47.2 (1-Jan-2025)
+# Creating filesystem with 131072000 4k blocks and 32768000 inodes
+# Filesystem UUID: 98d0025f-8bba-48a6-9324-ff9a799c488a
+# Superblock backups stored on blocks:
+#         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+#         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+#         102400000
+
+# Allocating group tables: done
+# Writing inode tables: done
+# Creating journal (262144 blocks): done
+# Writing superblocks and filesystem accounting information: done
+
+# mke2fs 1.47.2 (1-Jan-2025)
+# Creating filesystem with 131072000 4k blocks and 32768000 inodes
+# Filesystem UUID: e32f72ec-2c4b-4660-a9bd-e4357610c408
+# Superblock backups stored on blocks:
+#         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+#         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+#         102400000
+
+# Allocating group tables: done
+# Writing inode tables: done
+# Creating journal (262144 blocks): done
+# Writing superblocks and filesystem accounting information: done
+
+# ===================================================================
+# ÉTAPE 6 : Monter et configurer
+# ===================================================================
+
+sudo mkdir -p /mnt/ai-storage/{datasets,models}
+sudo mount /dev/vg-ai-data/lv-datasets /mnt/ai-storage/datasets
+sudo mount /dev/vg-ai-data/lv-models /mnt/ai-storage/models
+
+# Vérifier
+df -h | grep ai-storage
+
+# /dev/mapper/vg--ai--data-lv--datasets   492G    2,1M  467G   1% /mnt/ai-storage/datasets
+# /dev/mapper/vg--ai--data-lv--models     492G    2,1M  467G   1% /mnt/ai-storage/models
+
+
+# ===================================================================
+# ÉTAPE 7 : Configuration permanente
+# ===================================================================
+
+echo '/dev/vg-ai-data/lv-datasets /mnt/ai-storage/datasets ext4 defaults 0 2' | sudo tee -a /etc/fstab
+
+# /dev/vg-ai-data/lv-datasets /mnt/ai-storage/datasets ext4 defaults 0 2
+
+echo '/dev/vg-ai-data/lv-models /mnt/ai-storage/models ext4 defaults 0 2' | sudo tee -a /etc/fstab
+
+# /dev/vg-ai-data/lv-models /mnt/ai-storage/models ext4 defaults 0 2
+
+# Tester
+sudo umount /mnt/ai-storage/datasets
+sudo umount /mnt/ai-storage/models
+sudo mount -a
+
+# montage : (astuce) votre fstab a été modifié mais systemd utilise encore
+#        l'ancienne version ; utilisez « systemctl daemon-reload » pour recharger.
+
+df -h | grep ai-storage
+
+# /dev/mapper/vg--ai--data-lv--datasets   492G    2,1M  467G   1% /mnt/ai-storage/datasets
+# /dev/mapper/vg--ai--data-lv--models     492G    2,1M  467G   1% /mnt/ai-storage/models
+
+# ===================================================================
+# ÉTAPE 8 : Créer les scripts de monitoring
+# ===================================================================
+
+# Script 1: check-raid-ai.sh (voir ci-dessus)
+sudo nano /usr/local/bin/check-raid-ai.sh
+
+### script ###
+#!/bin/bash
+# /usr/local/bin/check-raid-ai.sh
+
+echo "=== STATUS RAID LVM AI ==="
+echo ""
+
+# Santé globale avec les bons champs
+echo "État des volumes RAID:"
+sudo lvs -o lv_name,lv_attr,lv_size,copy_percent,sync_percent,raid_sync_action vg-ai-data
+
+echo ""
+echo "Répartition sur les disques:"
+sudo lvs -a -o name,devices vg-ai-data | grep -E "lv-datasets|lv-models"
+
+echo ""
+echo "Disques physiques:"
+sudo pvs -o pv_name,vg_name,pv_size,pv_free
+
+echo ""
+echo "Utilisation des montages:"
+df -h | grep ai-storage
+
+echo ""
+# Vérifier si synchronisation en cours
+SYNC=$(sudo lvs --noheadings -o copy_percent vg-ai-data | grep -v "100.00")
+if [ -n "$SYNC" ]; then
+    echo "⏳ Synchronisation en cours..."
+    sudo lvs -o name,copy_percent vg-ai-data
+else
+    echo "✓ Tous les volumes sont synchronisés"
+fi
+
+# Vérifier les attributs (le 9ème caractère indique l'état de santé)
+echo ""
+echo "Attributs des volumes (lv_attr):"
+sudo lvs -o name,lv_attr vg-ai-data
+echo ""
+echo "Légende lv_attr:"
+echo "  Position 9: santé du RAID"
+echo "    - (tiret) = healthy"
+echo "    p = partial (problème)"
+echo "    r = refresh needed"
+echo "    m = mismatches exist"
+```
+
+### Comprendre les attributs LVM (lv_attr)
+
+Le champ `lv_attr` affiche 10 caractères qui indiquent l'état du volume :
+```
+Exemple: rwi-a-r---
+         123456789X
+
+Position 1: Type de volume
+  - r = RAID
+  - m = mirror
+  - l = linear
+
+Position 2-3: Permissions et état
+  - wi = writable
+  - -a = active
+
+Position 9: Santé RAID
+  - (tiret) = healthy
+  - p = partial (disque manquant)
+  - r = refresh needed
+  - m = mismatches detected
+
+### fin script ###
+
+sudo chmod +x /usr/local/bin/check-raid-ai.sh
+
+
+# Script 2: raid-integrity-check.sh (voir ci-dessus)
+sudo nano /usr/local/bin/raid-integrity-check.sh
+
+### script ###
+#!/bin/bash
+# /usr/local/bin/raid-integrity-check.sh
+
+echo "=== VÉRIFICATION D'INTÉGRITÉ RAID ==="
+echo ""
+
+VOLUMES=("lv-datasets" "lv-models")
+
+for vol in "${VOLUMES[@]}"; do
+    echo "Vérification de $vol..."
+
+    # Lancer le check
+    sudo lvchange --syncaction check /dev/vg-ai-data/$vol
+
+    echo "Attente de la fin du check (cela peut prendre du temps)..."
+
+    # Attendre la fin
+    while true; do
+        ACTION=$(sudo lvs --noheadings -o raid_sync_action vg-ai-data/$vol | tr -d ' ')
+        PERCENT=$(sudo lvs --noheadings -o sync_percent vg-ai-data/$vol | tr -d ' ')
+
+        if [ "$ACTION" = "idle" ]; then
+            break
+        fi
+
+        echo "  Progression: $PERCENT%"
+        sleep 10
+    done
+
+    # Vérifier les erreurs
+    MISMATCH=$(sudo lvs --noheadings -o raid_mismatch_count vg-ai-data/$vol | tr -d ' ')
+
+    if [ "$MISMATCH" = "0" ]; then
+        echo "✓ $vol: Aucune erreur détectée"
+    else
+        echo "⚠️  $vol: $MISMATCH erreurs détectées!"
+    fi
+
+    echo ""
+done
+
+echo "Vérification terminée."
+
+### fin script ###
+
+sudo chmod +x /usr/local/bin/raid-integrity-check.sh
+
+# ===================================================================
+# ÉTAPE 9 : Vérification finale
+# ===================================================================
+
+echo "=== VÉRIFICATION FINALE ==="
+echo ""
+echo "1. Volumes créés:"
+sudo lvs vg-ai-data
+echo ""
+echo "2. Attributs (santé):"
+sudo lvs -o name,lv_attr,copy_percent vg-ai-data
+echo ""
+echo "3. Répartition disques:"
+sudo lvs -a -o name,devices vg-ai-data | grep -E "lv-datasets|lv-models"
+echo ""
+echo "4. Montages:"
+df -h | grep ai-storage
+echo ""
+echo "5. Test écriture:"
+sudo touch /mnt/ai-storage/datasets/test.txt
+sudo touch /mnt/ai-storage/models/test.txt
+ls -lh /mnt/ai-storage/*/test.txt
+sudo rm /mnt/ai-storage/*/test.txt
+echo ""
+echo "✓ Configuration RAID1 terminée!"
+
+# === VÉRIFICATION FINALE ===
+
+# 1. Volumes créés:
+#   LV          VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+#   lv-datasets vg-ai-data rwi-aor--- 500,00g                                    100,00
+#   lv-models   vg-ai-data rwi-aor--- 500,00g                                    100,00
+
+# 2. Attributs (santé):
+#   LV          Attr       Cpy%Sync
+#   lv-datasets rwi-aor--- 100,00
+#   lv-models   rwi-aor--- 100,00
+
+# 3. Répartition disques:
+#   lv-datasets            lv-datasets_rimage_0(0),lv-datasets_rimage_1(0)
+#   [lv-datasets_rimage_0] /dev/sda1(1)
+#   [lv-datasets_rimage_1] /dev/sdb1(1)
+#   [lv-datasets_rmeta_0]  /dev/sda1(0)
+#   [lv-datasets_rmeta_1]  /dev/sdb1(0)
+#   lv-models              lv-models_rimage_0(0),lv-models_rimage_1(0)
+#   [lv-models_rimage_0]   /dev/sda1(128002)
+#   [lv-models_rimage_1]   /dev/sdb1(128002)
+#   [lv-models_rmeta_0]    /dev/sda1(128001)
+#   [lv-models_rmeta_1]    /dev/sdb1(128001)
+
+# 4. Montages:
+# /dev/mapper/vg--ai--data-lv--datasets   492G    2,1M  467G   1% /mnt/ai-storage/datasets
+# /dev/mapper/vg--ai--data-lv--models     492G    2,1M  467G   1% /mnt/ai-storage/models
+
+# 5. Test écriture:
+# -rw-r--r-- 1 root root 0 10 nov.  09:54 /mnt/ai-storage/datasets/test.txt
+# -rw-r--r-- 1 root root 0 10 nov.  09:54 /mnt/ai-storage/models/test.txt
+
+# ✓ Configuration RAID1 terminée!
+
+
+# Commandes utiles pour le dépannage
+
+# Voir tous les champs disponibles pour lvs
+sudo lvs -o help
+
+# Voir l'état détaillé d'un volume
+sudo lvdisplay -m /dev/vg-ai-data/lv-datasets
+
+# Forcer une réparation si problème
+sudo lvconvert --repair /dev/vg-ai-data/lv-datasets
+
+# Voir les logs LVM
+sudo journalctl -u lvm2-monitor -f
+
+# Informations sur le RAID
+sudo dmsetup status
+
+# Statistiques I/O
+sudo iostat -x 5
+
+# Automatiser la vérification quotidienne
+
+# Créer un cron job
+sudo crontab -e
+# Ajouter :
+# Vérification RAID tous les jours à 3h du matin
+0 3 * * * /usr/local/bin/check-raid-ai.sh >> /var/log/raid-check.log 2>&1
+
+# Vérification intégrité tous les dimanches à 4h
+0 4 * * 0 /usr/local/bin/raid-integrity-check.sh >> /var/log/raid-integrity.log 2>&1
+
+
+# no crontab for root - using an empty one
+# crontab: installing new crontab
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
