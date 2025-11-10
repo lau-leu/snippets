@@ -1,0 +1,140 @@
+# liste des commandes création LVM sur 3 hdd WD red 4To
+
+sudo gdisk /dev/sda
+sudo gdisk /dev/sdb
+sudo gdisk /dev/sdc
+
+#Command (? for help): n
+#Partition number (1-128, default 1):
+#First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
+#First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
+#Last sector (2048-7814037134, default = 7814035455) or {+-}size{KMGTP}:
+#Current type is 8300 (Linux filesystem)
+#Hex code or GUID (L to show codes, Enter = 8300): 8e00
+#Changed type of partition to 'Linux LVM'
+#Command (? for help): w
+
+#sudo pvcreate /dev/sda /dev/sdb /dev/sdc #pas sûr de l'utilité si gdisk réalisé
+
+sudo vgcreate vg-ai-data /dev/sda1 /dev/sdb1 /dev/sdc1
+#WARNING: dos signature detected on /dev/sda1 at offset 510. Wipe it? [y/n]: y
+#  Wiping dos signature on /dev/sda1.
+#  Physical volume "/dev/sda1" successfully created.
+#  Physical volume "/dev/sdb1" successfully created.
+#  Physical volume "/dev/sdc1" successfully created.
+#  Volume group "vg-ai-data" successfully created
+
+sudo lvcreate -L 500G -n lv-datasets vg-ai-data
+#  Logical volume "lv-datasets" created.
+sudo lvcreate -L 500G -n lv-models vg-ai-data
+#  Logical volume "lv-models" created.
+
+### modification du choix, passer en mirroring
+#Étape 1 : Supprimer les volumes existants (si déjà créés)
+# Vérifier ce qui existe
+sudo lvdisplay vg-ai-data
+
+# Démonter si montés
+sudo umount /mnt/ai-storage/datasets 2>/dev/null
+sudo umount /mnt/ai-storage/models 2>/dev/null
+
+# Supprimer les volumes logiques
+sudo lvremove /dev/vg-ai-data/lv-datasets
+sudo lvremove /dev/vg-ai-data/lv-models
+
+# Vérifier que le VG existe toujours
+sudo vgdisplay vg-ai-data
+
+#Étape 2 : Créer les volumes miroirs
+#Option A : Miroir sur 2 disques (recommandé avec 3 disques)
+
+# Volume pour les datasets (500 GB mirroré sur 2 disques)
+sudo lvcreate --type raid1 \
+  --mirrors 1 \
+  --size 500G \
+  --name lv-datasets \
+  vg-ai-data
+
+# Volume pour les modèles (500 GB mirroré sur 2 disques)
+sudo lvcreate --type raid1 \
+  --mirrors 1 \
+  --size 500G \
+  --name lv-models \
+  vg-ai-data
+
+# Le 3ème disque servira pour d'autres volumes ou comme spare
+#Explication :
+# --type raid1 : Type RAID1 (miroir)
+# --mirrors 1 : 1 miroir = 2 copies (original + 1 copie)
+#Consomme 1 To d'espace physique pour 500 GB utilisables
+
+#Option B : Miroir sur 3 disques (maximum redondance)
+
+# Avec 2 miroirs (3 copies totales)
+sudo lvcreate --type raid1 \
+  --mirrors 2 \
+  --size 300G \
+  --name lv-datasets \
+  vg-ai-data
+
+sudo lvcreate --type raid1 \
+  --mirrors 2 \
+  --size 300G \
+  --name lv-models \
+  vg-ai-data
+
+#Explication :
+
+# --mirrors 2 : 2 miroirs = 3 copies totales
+# Perte de 2 disques = données toujours disponibles
+# Consomme 900 GB x 3 d'espace physique pour 300 GB utilisables
+
+#Étape 3 : Vérifier la création
+
+# Voir les détails des volumes RAID
+sudo lvs -a -o +devices vg-ai-data
+
+# Affichage détaillé
+sudo lvdisplay vg-ai-data/lv-datasets
+
+# Vérifier le statut RAID
+# Statut basique des volumes RAID
+
+# Option 1: Watch continu
+watch -n 5 'sudo lvs -o name,copy_percent,sync_percent vg-ai-data'
+
+# Option 2: Vérification ponctuelle
+sudo lvs -a -o name,copy_percent,sync_percent,raid_sync_action vg-ai-data
+
+# Option 3: Détails complets
+sudo lvs -a -o name,lv_attr,lv_size,copy_percent,devices vg-ai-data
+
+# Informations complètes sur un volume
+sudo lvdisplay -m /dev/vg-ai-data/lv-datasets
+
+# Voir la répartition sur les disques physiques
+sudo lvs -a -o +devices vg-ai-data
+
+
+
+
+#Étape 4 : Attendre la synchronisation initiale
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

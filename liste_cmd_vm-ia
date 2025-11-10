@@ -1,0 +1,59 @@
+sudo virsh list --all
+
+ ID   Nom           État
+---------------------------
+ -    debian13      fermé
+ -    ubuntu22.04   fermé
+ -    win11         fermé
+
+virsh nodeinfo
+
+modèle de CPU :    x86_64
+CPU :               32
+Fréquence de la CPU : 4877 MHz
+socket(s) CPU :     1
+Coeur(s) par emplacements : 16
+Thread(s) par coeur : 2
+cellule(s) NUMA :   1
+Taille mémoire :   97957524 KiB
+
+free -h
+               total       utilisé      libre     partagé tamp/cache   disponible
+Mem:            93Gi       4,5Gi        86Gi        93Mi       3,0Gi        88Gi
+Échange:        16Gi          0B        16Gi
+
+Étape 2 : Télécharger l'ISO Ubuntu
+~/Téléchargements/ISO/ubuntu-22.04.5-live-server-amd64.iso
+
+Étape 3 : Créer le disque virtuel
+sudo qemu-img create -f qcow2 /var/lib/libvirt/images/vm-ia-system.qcow2 350G
+
+Étape 4 : Créer la VM via virt-install
+
+sudo virt-install \
+  --name=vm-ia \
+  --ram=32768 \
+  --vcpus=12 \
+  --cpu host-passthrough \
+  --disk path=/var/lib/libvirt/images/vm-ia-system.qcow2,format=qcow2,bus=virtio \
+  --cdrom=~/Téléchargements/ISO/ubuntu-22.04.5-live-server-amd64.iso \
+  --network bridge=virbr0,model=virtio \
+  --graphics vnc,listen=0.0.0.0,port=5904 \
+  --os-variant=ubuntu24.04 \
+  --virt-type=kvm \
+  --boot uefi
+
+# Explication des paramètres :
+
+--ram=32768 : 32 GB de RAM (ajustable selon vos besoins)
+--vcpus=12 : 12 threads CPU (laisse 20 threads pour l'hôte et autres VMs)
+--cpu host-passthrough : Performances CPU maximales
+--disk bus=virtio : Meilleure performance I/O
+--network model=virtio : Meilleure performance réseau
+
+# modifier nom du périphérique pour le reseau virbr0 -> br0
+# connection
+ssh laurent@192.168.1.198 -p 22
+
+#Étape 6 : Configuration post-installation
+#Une fois Ubuntu installé et démarré :
