@@ -2,7 +2,7 @@ angage: bash
 nom: libvirt_autorisation_parametre
 titre: parametrage autorisation libvirt
 description: parametrage autorisation libvirt afin d'éviter sudo
-tags: libvirt,sudo,virsh,droit,user,groups,vm
+tags: libvirt,sudo,virsh,droit,user,groups,vm,snapshot
 
 #Vérifie les logs de libvirt pour des erreurs :
 sudo journalctl -u libvirtd -b

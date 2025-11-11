@@ -1,0 +1,143 @@
+### STOCKAGE PARTAGÉ ENTRE VMs - CONFIGURATION DÉTAILLÉE
+repertoire sur jarvis-kde
+/mnt/ai-storage/models
+/mnt/ai-storage/datasets
+
+
+# Méthode 2 : NFS (Alternative - Plus universel)
+
+
+# 4. Configurer NFS
+
+# sur hote jarvis-kde
+# Créer les répertoires partagés
+sudo mkdir -p /srv/shared-vms/ai-datasets
+sudo mkdir -p /srv/shared-vms/ai-models
+sudo mkdir -p /srv/shared-vms/common-scripts
+
+# Permissions
+sudo chown -R libvirt-qemu:kvm /srv/shared-vms
+sudo chmod -R 775 /srv/shared-vms
+
+# Créer un lien symbolique vers votre stockage WD Red
+sudo ln -s /mnt/ai-storage/datasets /srv/shared-vms/ai-datasets-hdd
+sudo ln -s /mnt/ai-storage/models /srv/shared-vms/ai-models-hdd
+
+sudo apt install nfs-kernel-server
+
+# Configurer les exports
+# sudo nano /etc/exports
+# ```
+
+# **Ajouter :**
+# ```
+
+### nano ###
+/mnt/ai-storage/datasets 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
+/mnt/ai-storage/models 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
+### nano ###
+
+# Redémarrer NFS
+sudo exportfs -ra
+sudo systemctl restart nfs-kernel-server
+
+# Vérifier
+sudo exportfs -v
+# -> /mnt/ai-storage/datasets
+# ->                 192.168.122.0/24(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,no_root_squash,no_all_squash)
+# -> /mnt/ai-storage/models
+# ->                 192.168.122.0/24(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,no_root_squash,no_all_squash)
+
+sudo showmount -e localhost
+# -> Export list for localhost:
+# -> /mnt/ai-storage/models   192.168.122.0/24
+# -> /mnt/ai-storage/datasets 192.168.122.0/24
+
+##################################
+# Dans chaque VM (Ubuntu, Debian test, etc.) :
+# Installer le client NFS
+sudo apt install nfs-common
+
+# Créer les points de montage
+sudo mkdir -p /mnt/shared/{datasets,models}
+
+# Monter (remplacer 192.168.122.1 par l'IP de votre hôte sur virbr0)
+sudo mount -t nfs 192.168.122.1:/mnt/ai-storage/datasets /mnt/shared/datasets
+sudo mount -t nfs 192.168.122.1:/mnt/ai-storage/models /mnt/shared/models
+
+df -h | grep shared
+# -> 192.168.122.1:/mnt/ai-storage/datasets  492G  2,0M  467G   1% /mnt/shared/datasets
+# -> 192.168.122.1:/mnt/ai-storage/models    492G  2,0M  467G   1% /mnt/shared/models
+
+# Rendre permanent
+echo '192.168.122.1:/mnt/ai-storage/datasets /mnt/shared/datasets nfs defaults 0 0' | sudo tee -a /etc/fstab
+echo '192.168.122.1:/mnt/ai-storage/models /mnt/shared/models nfs defaults 0 0' | sudo tee -a /etc/fstab
+
+
+#######################
+# Dans la VM, vérifier les options de montage NFS
+mount | grep shared
+# -> 192.168.122.1:/mnt/ai-storage/datasets on /mnt/shared/datasets type nfs4 (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.122.136,local_lock=none,addr=192.168.122.1)
+# -> 192.168.122.1:/mnt/ai-storage/models on /mnt/shared/models type nfs4 (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.122.136,local_lock=none,addr=192.168.122.1)
+
+
+
+### script de vérification à faire sur l'hote
+
+sudo nano check-nfs.sh
+#### nano ####
+
+!/bin/bash
+
+echo "=== DIAGNOSTIC NFS ==="
+echo ""
+
+echo "1. Exports NFS sur l'hôte:"
+sudo exportfs -v
+echo ""
+
+echo "2. Espace sur l'hôte:"
+df -h /mnt/ai-storage/datasets
+df -h /mnt/ai-storage/models
+echo ""
+
+echo "3. Vérification depuis l'hôte (showmount):"
+sudo showmount -e 192.168.122.1
+echo ""
+
+echo "4. Test montage local (depuis l'hôte):"
+sudo mkdir -p /tmp/nfs-test
+sudo umount /tmp/nfs-test 2>/dev/null
+sudo mount -t nfs 192.168.122.1:/mnt/ai-storage/datasets /tmp/nfs-test
+df -h /tmp/nfs-test
+sudo umount /tmp/nfs-test
+echo ""
+
+echo "5. Dans la VM:"
+VM_IP="192.168.1.198"
+if ping -c 1 $VM_IP &>/dev/null; then
+    echo "  Montages actuels:"
+    ssh laurent@$VM_IP -p 22 "mount | grep shared"
+    echo ""
+    echo "  Espace vu par la VM:"
+    ssh laurent@$VM_IP -p 22 "df -h | grep shared"
+    echo ""
+    echo "  Test showmount depuis la VM:"
+    ssh laurent@$VM_IP -p 22 "showmount -e 192.168.122.1"
+else
+    echo "  VM non accessible"
+fi
+
+#### fin nano ####
+
+
+
+
+
+
+
+
+
+
+
+

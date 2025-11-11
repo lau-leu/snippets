@@ -1,0 +1,175 @@
+
+
+
+
+# 1.Se connecter à la VM en SSH
+
+# Depuis jarvis-kde ou n'importe quel PC du réseau
+ssh laurent@192.168.1.198
+
+# Si première connexion, accepter la clé SSH
+```
+
+# Pas besoin de port forwarding !
+
+Les services dans la VM seront accessibles directement :
+```
+Jupyter Lab:          http://192.168.1.198:8888
+Open WebUI:           http://192.168.1.198:3000
+Stable Diffusion:     http://192.168.1.198:7860
+Ollama API:           http://192.168.1.198:11434
+
+# 2.Configuration initiale de la VM
+
+# Se connecter
+ssh laurent@192.168.1.198
+
+# Une fois dans la VM :
+#### 1. Mise à jour
+sudo apt update && sudo apt upgrade -y
+
+#### 2. Installer les outils essentiels
+sudo apt install -y qemu-guest-agent nfs-common git curl wget vim htop build-essential
+
+#### 3. Activer l'agent QEMU
+sudo systemctl enable qemu-guest-agent
+sudo systemctl start qemu-guest-agent
+
+#### 4. Configurer le hostname
+sudo hostnamectl set-hostname vm-ia
+
+#### 5. Vérifier le réseau
+ip addr show
+ping -c 2 8.8.8.8
+
+
+# 3.Monter le stockage NFS depuis la VM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Script de démarrage simplifié
+nano /usr/local/bin/vm-ia-start.sh
+
+### nano - bash ###
+
+#!/bin/bash
+
+echo "=== DÉMARRAGE VM-IA ==="
+echo ""
+
+# Démarrer la VM
+echo "1. Démarrage de la VM..."
+if sudo virsh list | grep -q "vm-ia.*en cours"; then
+    echo "   ✓ VM déjà démarrée"
+else
+    sudo virsh start vm-ia
+    sleep 5
+    echo "   ✓ VM démarrée"
+fi
+
+# Attendre l'IP (avec agent)
+echo ""
+echo "2. Attente de la disponibilité réseau..."
+for i in {1..30}; do
+    VM_IP=$(sudo virsh domifaddr vm-ia --source agent 2>/dev/null | grep -oP '192\.168\.1\.\d+' | head -1)
+    if [ -n "$VM_IP" ]; then
+        echo "   ✓ VM disponible sur: $VM_IP"
+        break
+    fi
+    sleep 2
+done
+
+if [ -z "$VM_IP" ]; then
+    echo "   ⚠  IP non détectée automatiquement"
+    VM_IP="192.168.1.198"
+    echo "   Utilisation de l'IP par défaut: $VM_IP"
+fi
+
+# Attendre SSH
+echo ""
+echo "3. Attente de SSH..."
+for i in {1..20}; do
+    if timeout 2 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=2 laurent@$VM_IP exit 2>/dev/null; then
+        echo "   ✓ SSH disponible"
+        break
+    fi
+    sleep 2
+done
+
+echo ""
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║                    VM-IA PRÊTE                           ║"
+echo "╚══════════════════════════════════════════════════════════╝"
+echo ""
+echo "IP: $VM_IP"
+echo "SSH: ssh laurent@$VM_IP"
+echo "Console: sudo virsh console vm-ia"
+echo ""
+echo "Services (après installation) :"
+echo "  Jupyter Lab:          http://$VM_IP:8888"
+echo "  Open WebUI:           http://$VM_IP:3000"
+echo "  Stable Diffusion:     http://$VM_IP:7860"
+echo "  Ollama API:           http://$VM_IP:11434"
+echo ""
+
+
+### fin nano - bash ###
+
+# permission du fichier
+sudo chmod +x /usr/local/bin/vm-ia-start.sh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

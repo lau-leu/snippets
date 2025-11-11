@@ -105,6 +105,26 @@ virt-viewer vm-ia
 
 ## ##
 # Procéder à l'installation Ubuntu standard.
+#### Installation d'Ubuntu dans la VM ####
+# Langue : Français
+# Clavier : Français
+# Type d'installation : Ubuntu Server
+# Configuration réseau : Accepter DHCP par défaut
+# Proxy : Laisser vide
+# Miroir : Garder par défaut
+# Disque :
+#  - Utiliser le disque entier
+#  - Partition automatique (LVM recommandé)
+# Profil :
+#  - Nom : laurent (ou votre choix)
+#  - Serveur : vm-ia
+#  - Username : laurent
+#  - Mot de passe : [votre choix]
+# SSH : Installer OpenSSH server ✓
+# Snaps : Ne rien sélectionner (on installera manuellement)
+# Installation : Attendre la fin (~10-15 min)
+# Reboot : Retirer le CD virtuel et redémarrer
+#### fin Installation d'Ubuntu dans la VM ####
 
 #Étape 6 : Configuration post-installation
 # Une fois Ubuntu installé et démarré :

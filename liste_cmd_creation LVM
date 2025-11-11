@@ -423,7 +423,16 @@ sudo crontab -e
 # crontab: installing new crontab
 
 
+# Si les volumes sont trop petits, vous pouvez les agrandir :
 
+# Étendre un volume (exemple : ajouter 200G)
+sudo lvextend -L +200G /dev/vg-ai-data/lv-datasets
+
+# Agrandir le système de fichiers
+sudo resize2fs /dev/vg-ai-data/lv-datasets
+
+# Vérifier
+df -h /mnt/ai-storage/datasets
 
 
 
