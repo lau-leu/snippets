@@ -1,0 +1,8 @@
+EC : En Cours d'élaboration
+PPA : Prêt Pour Ajout
+A : Ajouté
+
+début nom de fichier:
+C : Commande
+S : Script
+P : Procédure

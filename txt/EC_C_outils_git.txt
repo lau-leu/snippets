@@ -1,0 +1,77 @@
+# classique avec Git : tes branches locales et distantes ont divergé, et Git ne sait pas comment les réconcilier. Voici comment résoudre ce problème et récupérer les modifications de la branche distante.
+
+Tu es confronté à un conflit classique avec Git : tes branches locales et distantes ont divergé, et Git ne sait pas comment les réconcilier. Voici comment résoudre ce problème et récupérer les modifications de la branche distante.
+
+1. Choisir une stratégie de réconciliation
+Tu as trois options principales, selon ce que tu veux faire :
+Option 1 : Fusionner (merge)
+Crée un commit de fusion pour combiner les deux branches.
+git config pull.rebase false  # Définit la fusion comme stratégie par défaut
+git pull origin claude/testing-mi0aswltbwc347qu-0125udv9izUUV3eK3mADqMmS
+Option 2 : Rebaser (rebase)
+Applique tes commits locaux par-dessus ceux de la branche distante, pour un historique plus linéaire.
+git config pull.rebase true   # Définit le rebase comme stratégie par défaut
+git pull origin claude/testing-mi0aswltbwc347qu-0125udv9izUUV3eK3mADqMmS
+Option 3 : Fast-forward uniquement
+Ne permet de faire un pull que si la branche peut être avancée rapidement (sans conflit).
+git config pull.ff only      # Définit le fast-forward comme stratégie par défaut
+git pull origin claude/testing-mi0aswltbwc347qu-0125udv9izUUV3eK3mADqMmS
+
+2. Résoudre les conflits (si nécessaire)
+Si tu choisis de fusionner ou de rebaser et qu'il y a des conflits :
+
+Git te montrera les fichiers en conflit.
+Ouvre ces fichiers, cherche les marques <<<<<<<, =======, >>>>>>>.
+Résous les conflits manuellement, sauvegarde les fichiers.
+Ajoute les fichiers résolus avec git add <fichier>.
+Termine la fusion ou le rebase avec :
+
+Pour une fusion : git commit
+Pour un rebase : git rebase --continue
+
+
+
+
+3. Vérifier l'état de ton dépôt
+Après le pull, vérifie que tout est à jour :
+git status
+git log --oneline --graph
+
+4. (Optionnel) Définir une stratégie par défaut pour tous tes dépôts
+Si tu veux toujours utiliser la même stratégie (par exemple, rebase) :
+git config --global pull.rebase true
+
+Résumé des commandes utiles
+git config pull.rebase falseFusion par défautgit config pull.rebase trueRebase par défautgit config pull.ff onlyFast-forward uniquementgit pull --rebaseForce un rebase pour ce pullgit pull --no-rebaseForce une fusion pour ce pull
+
+Question : Quelle stratégie préfères-tu utiliser pour ce dépôt ? Ou veux-tu que je t’explique plus en détail une des options ?14:20comment je fais si je veux que ce soit github qui ecrase le local ?14:33Si tu veux que GitHub (la branche distante) écrase complètement ton travail local (c’est-à-dire que tu perds tes modifications locales et que tu récupères exactement l’état de la branche distante), voici la marche à suivre :
+
+1. Sauvegarde tes modifications locales (si nécessaire)
+Si tu as des modifications locales que tu ne veux pas perdre, fais une copie de sauvegarde avant de les écraser :
+cp -r /opt/django_app/appliweb /opt/django_app/appliweb_backup_$(date +%Y%m%d)
+
+2. Réinitialise ta branche locale pour qu’elle corresponde exactement à la branche distante
+Exécute ces commandes dans ton dépôt local :
+# Récupère les dernières informations des branches distantes
+git fetch origin
+
+# Réinitialise ta branche locale pour qu’elle soit identique à la branche distante
+git reset --hard origin/claude/testing-mi0aswltbwc347qu-0125udv9izUUV3eK3mADqMmS
+Explication :
+
+git fetch met à jour les références des branches distantes.
+git reset --hard remplace ton historique local et tes fichiers par ceux de la branche distante, sans possibilité de retour en arrière.
+
+
+3. Nettoie les fichiers non suivis (si nécessaire)
+Si tu veux aussi supprimer les fichiers locaux non suivis par Git (par exemple, des fichiers temporaires ou de configuration) :
+git clean -fd
+Attention : Cette commande supprime définitivement tous les fichiers non suivis.
+
+Résumé des commandes
+git fetch originMet à jour les références distantesgit reset --hard origin/claude/testing-mi0aswltbwc347qu-0125udv9izUUV3eK3mADqMmSÉcrase le local avec la branche distantegit clean -fdSupprime les fichiers non suivis (optionnel)
+
+⚠️ Attention :
+
+Cette opération est irréversible. Tous tes commits et modifications locales seront perdus.
+Assure-toi d’avoir sauvegardé ce que tu veux garder avant de faire un reset --hard.

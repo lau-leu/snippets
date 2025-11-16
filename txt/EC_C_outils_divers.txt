@@ -1,0 +1,96 @@
+
+
+
+# teste la connexion à Ollama
+curl -X POST http://ollama:11434/api/chat -H "Content-Type: application/json" -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello"}]}'
+
+# consulte les logs
+journalctl -u ollama -f  # Si Ollama est un service systemd
+
+# Vérifie sur quel port et quelle interface Ollama écoute
+ss -tulnp | grep 11434
+
+# Exécute cette commande pour voir si Ollama tourne
+ps aux | grep ollama
+
+# Statut de Gunicorn
+sudo systemctl status gunicorn
+
+# Vérifier qu'il écoute bien
+sudo lsof -i :8000
+
+# Tester localement
+curl -I http://127.0.0.1:8000
+
+ Maintenance
+Pour garder votre application en bon état :
+Commandes utiles
+# Redémarrer l'application
+sudo systemctl restart gunicorn
+# Voir les logs
+sudo journalctl -u gunicorn -f
+# Sauvegarder la base de données
+sudo -u postgres pg_dump django_app > backup_$(date +%Y%m%d).sql
+# Mettre à jour les fichiers statiques
+cd /opt/django_app
+source venv/bin/activate
+python manage.py collectstatic --noinput
+
+Renouvellement SSL (automatique)
+# Tester le renouvellement
+sudo certbot renew --dry-run
+
+#`df` affiche l'utilisation du disque en utilisant des unités humaines. Le paramètre `-h` permet d'afficher les informations avec des unités humaines, et le paramètre `/dev/nvme0*` vous donne des informations sur votre disque NVMe.
+df -h /dev/nvme0* | head -5
+
+
+# 'free' affiche l'utilisation de la mémoire en utilisant des unités humaines.
+free -h
+# information sur l'utilisation de la mémoire
+watch -n 1 'free -h; echo "---"; ps aux | grep ollama | head -5'
+
+# utilisation du processeur `top` affiche une liste des processus et de leurs informations, y compris le temps de chargement du système (CPU)
+top -b -n 1
+# utilisation du processeur en temps réel
+watch -n 1 'top -b -n 1 | grep "Cpu(s)"'
+# La commande `watch` permet d'exécuter une commande périodiquement et de mettre à jour l'écran avec les résultats
+#paramètre `-b` permet d'éviter l'affichage graphique, et le paramètre `-n 1` fait en sorte que `top` ne s'exécute qu'une seule fois
+#La commande `grep 'Cpu(s)'` filtre les lignes qui contiennent le mot "Cpu(s)",
+
+# `iostat` affiche l'utilisation de la mémoire de stockage et des opérations de lecture et d'écriture pour chaque périphérique de stockage connecté au système, y compris le disque NVMe.Le paramètre `-x` indique que vous voulez voir les unités de mesure en utilisant des unités humaines, et le paramètre `5 1` fait en sorte que `iostat` s'exécute cinq fois avec un délai de 1 seconde entre chaque exécution. Le paramètre `tail -5` permet d'afficher les cinq dernières lignes, ce qui vous donne des informations sur la vitesse de lecture et d'écriture du disque NVMe.
+iostat -x 5 1 | tail -5
+
+# Pour installer `iostat` sur une machine Debian KVM, vous pouvez utiliser la commande suivante pour installer le package `sysstat`, qui contient l'utilitaire `iostat` :
+```
+sudo apt-get update
+sudo apt-get install sysstat
+```
+# Cette commande installera également les autres utilitaires de performance disponibles dans le package `sysstat`, tels que `sar`, `pidstat`, et `mpstat`.
+
+# Une fois que le package est installé, vous pouvez lancer l'utilitaire `iostat` avec la commande suivante :
+```
+iostat
+```
+# Cela affichera les informations sur les opérations de lecture et d'écriture pour chaque périphérique de stockage connecté au système. Vous pouvez également utiliser des options de ligne de commande pour spécifier le délai entre chaque exécution, le nombre de lignes à afficher,
+# Pour obtenir une liste complète des options de ligne de commande disponibles pour `iostat`, vous pouvez consulter la documentation en utilisant la commande suivante :
+```
+man iostat
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

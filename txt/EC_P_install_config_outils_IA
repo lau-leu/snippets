@@ -1,0 +1,66 @@
+
+
+#INSTALLATION ET CONFIGURATION D'OUTILS IA SPÉCIFIQUES
+
+# ===================================================================
+# A. Installation de LLMs locaux (Ollama + Open WebUI)
+# ===================================================================
+# Dans la VM Ubuntu :
+
+# Installer Ollama (gestionnaire de LLMs)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# résultat:
+# --> >>> Installing ollama to /usr/local
+# --> [sudo] password for laurent:
+# --> >>> Downloading Linux amd64 bundle
+# --> ######################################################################## 100,0%
+# --> >>> Creating ollama user...
+# --> >>> Adding ollama user to render group...
+# --> >>> Adding ollama user to video group...
+# --> >>> Adding current user to ollama group...
+# --> >>> Creating ollama systemd service...
+# --> >>> Enabling and starting ollama service...
+# --> Created symlink /etc/systemd/system/default.target.wants/ollama.service → /etc/systemd/system/ollama.service.
+# --> >>> The Ollama API is now available at 127.0.0.1:11434.
+# --> >>> Install complete. Run "ollama" from the command line.
+# --> WARNING: No NVIDIA/AMD GPU detected. Ollama will run in CPU-only mode.
+
+# Démarrer le service
+sudo systemctl enable ollama
+sudo systemctl start ollama
+
+# Télécharger des modèles
+ollama pull llama3.2:3b      # Petit modèle rapide (2 GB)
+ollama pull mistral:7b       # Modèle équilibré (4.1 GB)
+ollama pull codellama:7b     # Spécialisé code (3.8 GB)
+ollama pull llama3.1:8b      # Performant (4.7 GB)
+
+# Pour un modèle plus gros (si RAM suffisante)
+ollama pull llama3.1:70b     # Très performant (40 GB)
+
+# Vérifier les modèles installés
+ollama list
+
+# Tester en ligne de commande
+ollama run llama3.2:3b "Explique-moi l'apprentissage automatique"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

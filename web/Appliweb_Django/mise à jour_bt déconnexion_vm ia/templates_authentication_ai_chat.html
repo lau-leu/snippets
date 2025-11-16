@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat IA - Ollama{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding-top: 70px; height: calc(100vh - 70px);">
+    <div class="row h-100">
+        <!-- Sidebar conversations -->
+        <div class="col-md-3 border-end p-3 bg-light" style="overflow-y: auto;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">💬 Conversations</h5>
+                <button class="btn btn-sm btn-primary" onclick="newConversation()">
+                    ➕ Nouveau
+                </button>
+            </div>
+
+            <div class="list-group">
+                {% for conv in conversations %}
+                <a href="?conversation_id={{ conv.id }}"
+                   class="list-group-item list-group-item-action {% if current_conversation.id == conv.id %}active{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-truncate" style="max-width: 200px;">
+                            {{ conv.title }}
+                        </div>
+                        <small class="text-muted">{{ conv.updated_at|date:"d/m H:i" }}</small>
+                    </div>
+                    <small class="text-muted">{{ conv.model_name }}</small>
+                </a>
+                {% empty %}
+                <p class="text-muted">Aucune conversation</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Zone de chat -->
+        <div class="col-md-9 d-flex flex-column p-0">
+            <!-- Header -->
+            <div class="border-bottom p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">
+                            {% if current_conversation %}
+                                {{ current_conversation.title }}
+                            {% else %}
+                                Nouvelle conversation
+                            {% endif %}
+                        </h5>
+                        <small class="text-muted">
+                            Modèle: <span id="current-model">{{ default_model }}</span>
+                        </small>
+                    </div>
+
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                id="modelDropdown" data-bs-toggle="dropdown">
+                            Changer le modèle
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for model in available_models %}
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="changeModel('{{ model }}'); return false;">
+                                    {{ model }}
+                                </a>
+                            </li>
+                            {% empty %}
+                            <li><span class="dropdown-item text-muted">Aucun modèle disponible</span></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="flex-grow-1 p-3" id="chat-messages" style="overflow-y: auto; background: #f8f9fa;">
+                {% for message in messages %}
+                <div class="mb-3 {% if message.role == 'user' %}text-end{% endif %}">
+                    <div class="d-inline-block p-3 rounded {% if message.role == 'user' %}bg-primary text-white{% else %}bg-white border{% endif %}"
+                         style="max-width: 70%;">
+                        <strong>{% if message.role == 'user' %}Vous{% else %}🤖 Assistant{% endif %}</strong>
+                        <div class="mt-2" style="white-space: pre-wrap;">{{ message.content }}</div>
+                        <small class="text-muted d-block mt-2">{{ message.timestamp|date:"H:i" }}</small>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted mt-5">
+                    <h3>💬</h3>
+                    <p>Commencez une conversation avec l'IA</p>
+                </div>
+                {% endfor %}
+
+                <!-- Loading indicator -->
+                <div id="loading-indicator" class="mb-3 d-none">
+                    <div class="d-inline-block p-3 rounded bg-white border">
+                        <strong>🤖 Assistant</strong>
+                        <div class="mt-2">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                            Réflexion en cours...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="border-top p-3 bg-white">
+                <form id="chat-form" onsubmit="sendMessage(event)">
+                    <div class="input-group">
+                        <textarea class="form-control" id="message-input" rows="2"
+                                  placeholder="Posez votre question..." required></textarea>
+                        <button class="btn btn-primary" type="submit" id="send-button">
+                            Envoyer 🚀
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentModel = '{{ default_model }}';
+let conversationId = {% if current_conversation %}'{{ current_conversation.id }}'{% else %}null{% endif %};
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function changeModel(model) {
+    currentModel = model;
+    document.getElementById('current-model').textContent = model;
+}
+
+function addMessage(role, content) {
+    const messagesDiv = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `mb-3 ${role === 'user' ? 'text-end' : ''}`;
+
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2, '0') + ':' +
+                 now.getMinutes().toString().padStart(2, '0');
+
+    messageDiv.innerHTML = `
+        <div class="d-inline-block p-3 rounded ${role === 'user' ? 'bg-primary text-white' : 'bg-white border'}"
+             style="max-width: 70%;">
+            <strong>${role === 'user' ? 'Vous' : '🤖 Assistant'}</strong>
+            <div class="mt-2" style="white-space: pre-wrap;">${content}</div>
+            <small class="text-muted d-block mt-2">${time}</small>
+        </div>
+    `;
+
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+async function sendMessage(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Désactiver le formulaire
+    const sendButton = document.getElementById('send-button');
+    sendButton.disabled = true;
+    input.disabled = true;
+
+    // Afficher le message utilisateur
+    addMessage('user', message);
+    input.value = '';
+
+    // Afficher l'indicateur de chargement
+    document.getElementById('loading-indicator').classList.remove('d-none');
+
+    try {
+        const response = await fetch('/ai-chat/send/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                message: message,
+                model: currentModel,
+                conversation_id: conversationId
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            addMessage('assistant', data.response);
+
+            // Mettre à jour l'ID de conversation si nouvelle
+            if (!conversationId && data.conversation_id) {
+                conversationId = data.conversation_id;
+                // Recharger la page pour afficher la conversation dans la sidebar
+                setTimeout(() => {
+                    window.location.href = `?conversation_id=${conversationId}`;
+                }, 1000);
+            }
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erreur de connexion: ' + error);
+    } finally {
+        // Cacher l'indicateur de chargement
+        document.getElementById('loading-indicator').classList.add('d-none');
+
+        // Réactiver le formulaire
+        sendButton.disabled = false;
+        input.disabled = false;
+        input.focus();
+    }
+}
+
+async function newConversation() {
+    try {
+        const response = await fetch('/ai-chat/new/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                model: currentModel
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = `?conversation_id=${data.conversation_id}`;
+        }
+    } catch (error) {
+        alert('Erreur: ' + error);
+    }
+}
+
+// Auto-scroll au chargement
+window.addEventListener('load', () => {
+    const messagesDiv = document.getElementById('chat-messages');
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+});
+
+// Permettre l'envoi avec Ctrl+Enter
+document.getElementById('message-input').addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+        document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+    }
+});
+</script>
+{% endblock %}

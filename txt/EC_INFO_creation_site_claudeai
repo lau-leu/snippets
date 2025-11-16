@@ -1,0 +1,55 @@
+Questions sur vm-ia :
+1. Configuration de vm-ia :
+
+    Quel système d'exploitation ? (Linux, Ubuntu, etc.)
+    VM Ubuntu server
+    Python est installé ? Quelle version ?
+    oui, Python 3.10.12
+    Avez-vous un accès SSH à vm-ia ?
+    oui
+    IP de vm-ia : 192.168.1.96 (confirmé ?)
+    oui 192.168.1.96
+    Ports disponibles ? (ex: 8000, 5000, 80, 443)
+    l'entré sur le reseau se fait par le biais d'une vm serverweb redirection ovh romane.leumaire.fr qui est directement sur internet avec 80 et 443, elle a un site portfolio et apache gère la redirection vers la vm django-app django.leumaire.fr, la vm-ia pourra etre jointe soit en local 192.168.1.96, soit par le site django-app. sinon pas de port indisponible
+2. Framework pour l'application chat sur vm-ia :
+
+Quelle option préférez-vous ?
+
+    Option A : Flask
+
+3. Authentification entre les VMs :
+
+    Les utilisateurs doivent-ils se connecter sur vm-ia ?
+    Options possibles :
+        A : Pas d'authentification sur vm-ia (accès libre au chat)
+
+4. Partage de données :
+
+    Les conversations doivent-elles être sauvegardées ?
+    oui
+    Si oui, où ? base de données sur vm-ia
+    L'historique des conversations doit être lié aux utilisateurs de Django ?
+    je sais pas, le plus simple
+
+5. Accès réseau :
+
+    Les deux VMs peuvent communiquer librement ?
+    oui
+    Depuis appliweb, on peut accéder à http://192.168.1.96:PORT ? oui ssh 60 ou autre libre
+    Les utilisateurs peuvent accéder directement à vm-ia depuis leur navigateur ?
+    oui, en local, sinon par appliweb django
+
+
+ok:   Une application web légère sur vm-ia (Flask recommandé)
+ok:    Interface de chat simple en HTML/JS
+ok:    Modification de appliweb pour supprimer les vues de chat
+ok:    Ajouter un simple lien/bouton vers http://192.168.1.96:5000
+
+Quelle information pouvez-vous me donner en priorité ?
+
+    Avez-vous accès SSH à vm-ia ?
+    oui
+    Préférez-vous Flask ou FastAPI pour vm-ia ?
+    flask
+    L'authentification est-elle nécessaire sur vm-ia ?
+    pas en local, sinon à travers appliweb

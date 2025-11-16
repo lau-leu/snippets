@@ -1,0 +1,64 @@
+<!-- <!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <header></header>
+    <main></main>
+    <footer></footer>
+  </body>
+</html> -->
+{% extends 'base.html' %}
+
+{% block title %}Hello World - Application Django 2FA{% endblock %}
+
+{% block content %}
+<div class="hello-container" style="padding-top: 60px;">
+    <div class="hello-card">
+        <h1>Hello World!</h1>
+        <p class="lead mb-4">
+            Bienvenue, <strong>{{ user.get_full_name|default:user.username }}</strong>! 🎉
+        </p>
+
+        <p class="text-muted mb-4">
+            Vous êtes maintenant connecté avec une authentification à deux facteurs sécurisée.
+        </p>
+
+        <div class="alert alert-success" role="alert">
+            <strong>✓ Authentification réussie</strong><br>
+            Votre identité a été vérifiée avec succès.
+        </div>
+
+        <div class="mt-4">
+            <a href="{% url 'logout' %}" class="btn btn-outline-primary">
+                Se déconnecter
+            </a>
+        </div>
+
+        <div class="mt-5 pt-4" style="border-top: 1px solid #e5e7eb;">
+            <p class="text-muted small mb-1">
+                <strong>Informations de session:</strong>
+            </p>
+            <p class="text-muted small">
+                Email: {{ user.email }}<br>
+                Dernière connexion: {{ user.last_login|date:"d/m/Y à H:i" }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes celebrate {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .hello-card {
+        animation: fadeInUp 0.6s ease-out, celebrate 2s ease-in-out 0.6s;
+    }
+</style>
+{% endblock %}

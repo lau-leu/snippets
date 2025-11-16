@@ -1,0 +1,10 @@
+# 1. Sécuriser avec le firewall
+sudo ufw allow 22/tcp
+sudo ufw allow 60/tcp
+sudo ufw allow from 192.168.1.0/24 to any port 5000 proto tcp
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+
+# 2. Vérifier
+sudo ufw status

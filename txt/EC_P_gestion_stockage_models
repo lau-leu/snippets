@@ -1,0 +1,345 @@
+# ===================================================================
+# OÙ S'INSTALLENT LES MODÈLES ?
+# ===================================================================
+# Par défaut, les emplacements sont :
+# Dans la VM Ubuntu
+
+# 1. Ollama (LLMs locaux)
+# --> ~/.ollama/models/
+# ou
+# --> /usr/share/ollama/.ollama/models/
+
+# 2. Hugging Face (transformers, diffusers)
+# --> ~/.cache/huggingface/
+# --> └── hub/  # Modèles téléchargés
+
+# 3. Stable Diffusion (Automatic1111)
+# --> ~/stable-diffusion-webui/models/
+# --> ├── Stable-diffusion/
+# --> ├── VAE/
+# --> ├── Lora/
+# --> └── embeddings/
+
+# 4. PyTorch/TensorFlow (modèles pré-entraînés)
+# --> ~/.cache/torch/hub/
+# --> ~/.keras/models/
+
+# Vérifier l'emplacement actuel
+# Dans la VM
+# Ollama
+ollama list  # Liste les modèles
+sudo du -sh ~/.ollama/models/ 2>/dev/null
+sudo du -sh /usr/share/ollama/.ollama/models/ 2>/dev/null
+
+# Hugging Face
+sudo du -sh ~/.cache/huggingface/
+
+# Stable Diffusion
+sudo du -sh ~/stable-diffusion-webui/models/
+
+# ===================================================================
+# Les modèles doivent-ils être sur NVMe ?
+# ===================================================================
+# Non, pas obligatoirement.
+#  - Chargement initial : Un modèle de 7GB prend ~35s depuis HDD vs ~1s depuis NVMe
+#  - Une fois en RAM : Aucune différence de performance
+#  - Recommandation :
+#     - Modèles utilisés quotidiennement : NVMe
+#     - Modèles occasionnels : HDD (acceptable)
+
+# ===================================================================
+# À quoi sert le stockage HDD partagé ?
+# ===================================================================
+# 1.Bibliothèque de modèles : Stocker 50+ modèles différents
+# 2.Datasets volumineux : ImageNet (150GB), Common Crawl, etc.
+# 3.Partage entre VMs : Accès depuis toutes vos VMs
+# 4.Backups : Projets, modèles fine-tunés
+# 5.Archives : Anciennes versions de modèles
+# 6.Économie NVMe : Garder 280G libres sur NVMe pour l'OS et le cache
+
+# 📈 Calcul d'espace typique
+# Sur NVMe (VM 350G) :
+#  - OS Ubuntu : 15G
+#  - Environnements Python : 10G
+#  - Cache temporaire : 20G
+#  - Modèles actifs : 50G
+#  - Espace libre : 255G ✅
+
+# Sur HDD partagé (1To) :
+#  - Modèles archivés : 200G
+#  - Datasets : 400G
+#  - Backups projets : 100G
+#  - Espace libre : 300G ✅
+
+Vous avez maintenant une architecture flexible et évolutive ! Le HDD sert de "bibliothèque" et le NVMe de "bureau de travail".
+
+# ===================================================================
+# NVMe vs HDD : Quelle différence ?
+# ===================================================================
+# NVMe (Corsair MP700 Pro) - RAPIDE ⚡
+#  - Lecture : 12,400 MB/s
+#  - Latence : < 1ms
+#  - Usage : Chargement rapide des modèles en RAM
+
+# HDD (WD Red) - CAPACITÉ 📦
+#  - Lecture : ~200 MB/s (60x plus lent)
+#  - Latence : 10-15ms
+#  - Usage : Stockage de masse, archives
+
+# ===================================================================
+# STRATÉGIE RECOMMANDÉE
+# ===================================================================
+# Ce qui DOIT être sur NVMe (dans la VM) :
+# ✅ Modèles utilisés quotidiennement
+#  - Ollama : modèles actifs (llama, mistral)
+#  - Hugging Face : modèles en cours d'utilisation
+#  - Stable Diffusion : modèle principal
+
+# ✅ Datasets en cours de traitement
+#  - Images pour entraînement actif
+#  - Données pré-traitées
+
+# ✅ Checkpoints d'entraînement
+#  - Sauvegardes pendant le fine-tuning
+
+# Ce qui VA sur HDD (stockage partagé) :
+# 📦 Archive des modèles
+#  - Anciens modèles peu utilisés
+#  - Différentes versions de modèles
+#  - Modèles de test
+
+# 📦 Datasets volumineux
+#  - ImageNet complet
+#  - Datasets bruts non traités
+#  - Archives de datasets
+
+# 📦 Backups
+#  - Sauvegardes de projets
+#  - Exports de modèles fine-tunés
+
+# ===================================================================
+# CONFIGURATION OPTIMALE
+# ===================================================================
+# 1. Déplacer le cache Ollama vers le stockage partagé
+# Dans la VM
+# ===================================================================
+# Créer un dossier pour les modèles partagés
+sudo mkdir -p /mnt/shared/models/ollama
+
+# Arrêter Ollama
+sudo systemctl stop ollama
+
+# Configurer Ollama pour utiliser le stockage partagé
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+sudo nano /etc/systemd/system/ollama.service.d/override.conf
+# Contenu :
+[Service]
+Environment="OLLAMA_MODELS=/mnt/shared/models/ollama"
+
+# Recharger et redémarrer
+sudo systemctl daemon-reload
+sudo systemctl start ollama
+
+# Vérifier
+ollama list
+ls -lh /mnt/shared/models/ollama/
+# ===================================================================
+# OU créer un lien symbolique (plus simple) :
+# Arrêter Ollama
+sudo systemctl stop ollama
+
+# Déplacer les modèles existants
+sudo mv ~/.ollama/models/* /mnt/shared/models/ollama/ 2>/dev/null
+
+# Créer le lien
+rm -rf ~/.ollama/models
+ln -s /mnt/shared/models/ollama ~/.ollama/models
+
+# Redémarrer
+sudo systemctl start ollama
+
+# ===================================================================
+# 2. Configurer Hugging Face pour le stockage partagé
+# Dans la VM
+# Créer la structure
+mkdir -p /mnt/shared/models/huggingface
+
+# Définir la variable d'environnement
+echo 'export HF_HOME=/mnt/shared/models/huggingface' >> ~/.bashrc
+echo 'export TRANSFORMERS_CACHE=/mnt/shared/models/huggingface' >> ~/.bashrc
+source ~/.bashrc
+
+# Tester
+python3 -c "import os; print(os.environ.get('HF_HOME'))"
+
+# ===================================================================
+# 3. Organisation du stockage partagé
+# Structure recommandée sur /mnt/shared/
+
+# /mnt/shared/
+# ├── datasets/                    # 500G sur HDD
+# │   ├── images/
+# │   │   ├── imagenet/          # Datasets volumineux
+# │   │   ├── coco/
+# │   │   └── custom/
+# │   ├── text/
+# │   │   ├── wikipedia/
+# │   │   └── common-crawl/
+# │   └── audio/
+# │       └── librispeech/
+# │
+# └── models/                      # 500G sur HDD
+#     ├── ollama/                 # Modèles LLM
+#     │   ├── llama-3.2-3b/
+#     │   ├── mistral-7b/
+#     │   └── archived/           # Anciens modèles
+#     ├── huggingface/            # Cache HF
+#     │   └── hub/
+#     ├── stable-diffusion/       # Modèles SD
+#     │   ├── checkpoints/
+#     │   ├── lora/
+#     │   └── vae/
+#     └── custom/                 # Vos modèles fine-tunés
+#         ├── sentiment-analysis/
+#         └── image-classifier/
+
+# ===================================================================
+# 4. Workflow optimal : NVMe comme cache
+# Idée : Copier temporairement sur NVMe pour l'utilisation, archiver sur HDD.
+# Créer un script /usr/local/bin/model-manager.sh dans la VM :
+
+nano /usr/local/bin/model-manager.sh
+
+#!/bin/bash
+# model-manager.sh - Gestionnaire de modèles intelligent
+
+NVME_MODELS="$HOME/models-active"  # Sur la VM (NVMe)
+HDD_MODELS="/mnt/shared/models"     # Sur HDD partagé
+
+mkdir -p "$NVME_MODELS"
+
+case "$1" in
+    load)
+        # Copier un modèle du HDD vers NVMe
+        MODEL="$2"
+        if [ -z "$MODEL" ]; then
+            echo "Usage: $0 load <model-name>"
+            exit 1
+        fi
+
+        echo "Copie de $MODEL depuis HDD vers NVMe..."
+        rsync -avh --progress "$HDD_MODELS/$MODEL" "$NVME_MODELS/"
+        echo "✓ Modèle disponible : $NVME_MODELS/$MODEL"
+        ;;
+
+    archive)
+        # Déplacer un modèle de NVMe vers HDD
+        MODEL="$2"
+        if [ -z "$MODEL" ]; then
+            echo "Usage: $0 archive <model-name>"
+            exit 1
+        fi
+
+        echo "Archive de $MODEL vers HDD..."
+        rsync -avh --progress "$NVME_MODELS/$MODEL" "$HDD_MODELS/"
+        rm -rf "$NVME_MODELS/$MODEL"
+        echo "✓ Modèle archivé : $HDD_MODELS/$MODEL"
+        ;;
+
+    list-active)
+        echo "=== Modèles sur NVMe (actifs) ==="
+        du -sh "$NVME_MODELS"/* 2>/dev/null || echo "Aucun modèle actif"
+        ;;
+
+    list-archived)
+        echo "=== Modèles sur HDD (archivés) ==="
+        du -sh "$HDD_MODELS"/* 2>/dev/null
+        ;;
+
+    sync)
+        echo "Synchronisation NVMe → HDD..."
+        rsync -avh --progress "$NVME_MODELS/" "$HDD_MODELS/backup-nvme/"
+        echo "✓ Sauvegarde terminée"
+        ;;
+
+    *)
+        echo "Usage: $0 {load|archive|list-active|list-archived|sync} [model-name]"
+        exit 1
+        ;;
+esac
+
+chmod +x /usr/local/bin/model-manager.sh
+
+# Utilisation :
+# Lister les modèles archivés
+model-manager.sh list-archived
+
+# Charger un modèle sur NVMe pour utilisation
+model-manager.sh load stable-diffusion/sd-xl-base
+
+# Après utilisation, archiver
+model-manager.sh archive stable-diffusion/sd-xl-base
+
+# Sauvegarder tout
+model-manager.sh sync
+
+# ===================================================================
+# 📊 EXEMPLES CONCRETS
+# ===================================================================
+# Exemple 1 : Fine-tuning d'un modèle
+# 1. Dataset sur HDD (stockage permanent)
+DATASET="/mnt/shared/datasets/custom/product-reviews"
+
+# 2. Copier un subset sur NVMe pour l'entraînement (performance)
+cp -r "$DATASET" ~/training-data/
+
+# 3. Charger le modèle de base depuis HDD
+python3 << EOF
+from transformers import AutoModel
+import os
+
+# Cache sur HDD
+os.environ['HF_HOME'] = '/mnt/shared/models/huggingface'
+
+model = AutoModel.from_pretrained('bert-base-uncased')
+EOF
+
+# 4. Fine-tuning (utilise la RAM)
+# ...
+
+# 5. Sauvegarder le modèle fine-tuné sur HDD
+cp -r ~/my-model /mnt/shared/models/custom/product-sentiment/
+
+# ===================================================================
+# Exemple 2 : Génération d'images batch
+# 1. Modèle SD sur HDD
+SD_MODEL="/mnt/shared/models/stable-diffusion/sd-xl-base"
+
+# 2. Script de génération pointe vers HDD
+cd ~/stable-diffusion-webui
+./webui.sh --ckpt "$SD_MODEL/model.safetensors"
+
+# 3. Images générées sauvegardées sur HDD
+OUTPUT="/mnt/shared/datasets/generated-images"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

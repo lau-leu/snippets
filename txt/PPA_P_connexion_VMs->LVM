@@ -1,36 +1,41 @@
 ### STOCKAGE PARTAGÉ ENTRE VMs - CONFIGURATION DÉTAILLÉE
-repertoire sur jarvis-kde
+
+#repertoire sur jarvis-kde si besoin voir procédure LVM
 /mnt/ai-storage/models
 /mnt/ai-storage/datasets
 
+# ===================================================================
 
-# Méthode 2 : NFS (Alternative - Plus universel)
+## Architecture finale simplifiée
 
+# jarvis-kde (hôte)
+# ├── Corsair MP700 Pro (NVMe 2To)
+# │   └── /var/lib/libvirt/images/
+# │       └── vm-ia-system.qcow2 (300G)
+# │
+# └── 3x WD Red 4To (LVM RAID1)
+#     └── vg-ai-data
+#         ├── lv-datasets (500G) → /mnt/ai-storage/datasets
+#         └── lv-models (500G)   → /mnt/ai-storage/models
+#                                           ↓
+#                                     NFS export
+#                                           ↓
+#                                        vm-ia
+#                                           ↓
+#                                   /mnt/shared/
+#                                   ├── datasets/
+#                                   └── models/
 
-# 4. Configurer NFS
+# ===================================================================
 
-# sur hote jarvis-kde
-# Créer les répertoires partagés
-sudo mkdir -p /srv/shared-vms/ai-datasets
-sudo mkdir -p /srv/shared-vms/ai-models
-sudo mkdir -p /srv/shared-vms/common-scripts
+# Méthode NFS (Alternative - Plus universel)
+# Configurer NFS sur hote jarvis-kde
 
-# Permissions
-sudo chown -R libvirt-qemu:kvm /srv/shared-vms
-sudo chmod -R 775 /srv/shared-vms
-
-# Créer un lien symbolique vers votre stockage WD Red
-sudo ln -s /mnt/ai-storage/datasets /srv/shared-vms/ai-datasets-hdd
-sudo ln -s /mnt/ai-storage/models /srv/shared-vms/ai-models-hdd
-
+# Installer le serveur NFS
 sudo apt install nfs-kernel-server
 
 # Configurer les exports
-# sudo nano /etc/exports
-# ```
-
-# **Ajouter :**
-# ```
+sudo nano /etc/exports
 
 ### nano ###
 /mnt/ai-storage/datasets 192.168.122.0/24(rw,sync,no_subtree_check,no_root_squash)
@@ -53,8 +58,10 @@ sudo showmount -e localhost
 # -> /mnt/ai-storage/models   192.168.122.0/24
 # -> /mnt/ai-storage/datasets 192.168.122.0/24
 
-##################################
-# Dans chaque VM (Ubuntu, Debian test, etc.) :
+# ===================================================================
+
+# Dans chaque VM (Ubuntu, Debian test, etc.)
+
 # Installer le client NFS
 sudo apt install nfs-common
 
@@ -73,20 +80,20 @@ df -h | grep shared
 echo '192.168.122.1:/mnt/ai-storage/datasets /mnt/shared/datasets nfs defaults 0 0' | sudo tee -a /etc/fstab
 echo '192.168.122.1:/mnt/ai-storage/models /mnt/shared/models nfs defaults 0 0' | sudo tee -a /etc/fstab
 
+# ===================================================================
 
-#######################
 # Dans la VM, vérifier les options de montage NFS
 mount | grep shared
 # -> 192.168.122.1:/mnt/ai-storage/datasets on /mnt/shared/datasets type nfs4 (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.122.136,local_lock=none,addr=192.168.122.1)
 # -> 192.168.122.1:/mnt/ai-storage/models on /mnt/shared/models type nfs4 (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.122.136,local_lock=none,addr=192.168.122.1)
 
-
+# ===================================================================
 
 ### script de vérification à faire sur l'hote
 
 sudo nano check-nfs.sh
-#### nano ####
 
+#### nano ####
 !/bin/bash
 
 echo "=== DIAGNOSTIC NFS ==="
@@ -127,10 +134,9 @@ if ping -c 1 $VM_IP &>/dev/null; then
 else
     echo "  VM non accessible"
 fi
-
 #### fin nano ####
 
-
+# ===================================================================
 
 
 

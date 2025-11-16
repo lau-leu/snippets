@@ -1,0 +1,17 @@
+Nouvelle Application Flask (vm-ia-chat/)
+
+J'ai créé une application Flask complète et autonome :
+
+Fichiers créés :
+
+    app.py - Application Flask principale avec API REST
+    config.py - Configuration (Ollama URL, port, etc.)
+    database.py - Gestion SQLite pour les conversations
+    ollama_client.py - Client pour communiquer avec Ollama
+    requirements.txt - Dépendances (Flask, requests, gunicorn)
+    deploy.sh - Script de déploiement automatisé
+    README.md - Documentation complète
+    .gitignore - Fichiers à ignorer
+    Templates HTML : Interface de chat moderne
+    CSS : Design responsive et professionnel
+    JavaScript : Gestion en temps réel du chat

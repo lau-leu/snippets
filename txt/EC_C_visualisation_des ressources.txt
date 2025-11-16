@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "---"
+free -h
+echo "---"
+top -b -n 1 | grep 'Mem:'
+echo "---"
+df -h /mnt/ssd* | head -5

@@ -1,0 +1,48 @@
+
+Service systemd - C'est quoi ?
+
+Un service systemd permet de :
+
+    ✅ Démarrer automatiquement l'application au démarrage de vm-ia
+    ✅ Redémarrer automatiquement l'application si elle plante
+    ✅ Gérer facilement l'application avec des commandes simples :
+        sudo systemctl start chat-ia (démarrer)
+        sudo systemctl stop chat-ia (arrêter)
+        sudo systemctl restart chat-ia (redémarrer)
+        sudo systemctl status chat-ia (voir l'état)
+    ✅ Voir les logs avec sudo journalctl -u chat-ia -f
+
+🎯 Ma recommandation : OUI (répondre "o")
+
+Pourquoi ?
+
+    C'est une VM de production qui héberge le chat
+    Si vm-ia redémarre (mise à jour, panne, etc.), le chat redémarrera automatiquement
+    C'est la bonne pratique pour les applications serveur
+    Vous n'aurez pas à vous reconnecter en SSH pour relancer l'app après un redémarrage
+
+📝 Que faire après avoir répondu "o" ?
+
+Le script créera le fichier de service dans /tmp/chat-ia.service.
+
+Ensuite, vous devrez exécuter ces commandes (le script vous les donnera) :
+
+sudo cp /tmp/chat-ia.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable chat-ia
+sudo systemctl start chat-ia
+
+⚠️ Si vous répondez "N" (non)
+
+Vous devrez démarrer l'application manuellement à chaque fois :
+
+cd ~/vm-ia-chat
+source venv/bin/activate
+python app.py
+# ou
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+
+Et elle s'arrêtera si :
+
+    Vous fermez le terminal SSH
+    La VM redémarre

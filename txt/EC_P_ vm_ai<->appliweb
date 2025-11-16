@@ -1,0 +1,126 @@
+
+# ===================================================================
+#               PARTIE 1 : Menu avec bouton déconnexion
+# ===================================================================
+
+# 1.1 Créer un template de base avec menu
+
+# Modifions base.html pour ajouter une navbar :
+nano templates/base.html
+
+# 1.2 Mettre à jour le template hello.html
+nano templates/authentication/hello.html
+
+# ===================================================================
+#               PARTIE 2 : Page de Chat IA avec Ollama
+# ===================================================================
+
+# 2.1 Installer les dépendances
+
+# bash
+# Sur la VM Django
+cd /opt/django_app
+source venv/bin/activate
+
+# Installer les bibliothèques nécessaires
+pip install requests
+
+# 2.2 Configuration settings.py
+nano myproject/settings.py
+
+# 2.3 Créer le service Ollama
+nano authentication/ollama_service.py
+
+# 2.4 Créer le modèle pour l'historique
+nano authentication/models.py
+
+# 2.5 Créer les vues
+nano authentication/views.py
+
+# 2.6 URLs
+nano authentication/urls.py
+
+# 2.7 Template du chat IA
+nano templates/authentication/ai_chat.html
+
+# ===================================================================
+#               PARTIE 3 : Configuration et déploiement
+# ===================================================================
+
+# 3.1 Migrations
+
+cd /opt/django_app
+source venv/bin/activate
+
+python manage.py makemigrations
+python manage.py migrate
+
+# 3.2 Mettre à jour l'admin
+nano authentication/admin.py
+
+# 3.3 Configuration de l'IP de votre VM Ollama
+nano myproject/settings.py
+Modifiez cette ligne avec la bonne IP :
+OLLAMA_API_URL = 'http://192.168.1.XXX:11434'  # Remplacez XXX par l'IP de votre VM Ollama
+OLLAMA_DEFAULT_MODEL = 'llama2'  # Ou le modèle que vous avez installé
+
+# 3.4 Redémarrer Gunicorn
+sudo systemctl restart gunicorn
+
+# ===================================================================
+#      PARTIE 4 : Configuration d'Ollama (sur la VM IA voisine)
+# ===================================================================
+
+# Sur votre VM où Ollama est installé :
+# 4.1 Permettre les connexions externes
+
+# Éditer le service Ollama
+sudo nano /etc/systemd/system/ollama.service
+
+# Ajoutez dans la section [Service] :
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+
+# Redémarrez :
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+
+# 4.2 Vérifier les modèles installés
+ollama list
+
+# Si aucun modèle n'est installé :
+
+# Installer un modèle (ex: llama2)
+ollama pull llama2
+
+# Ou un modèle plus léger
+ollama pull mistral
+
+
+# Test final
+
+# Allez sur https://django.leumaire.fr
+# Connectez-vous avec 2FA
+# Cliquez sur 💬 Chat IA dans le menu
+# Sélectionnez un modèle
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

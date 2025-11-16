@@ -1,0 +1,173 @@
+# laurent@vm-ia:~$ time ollama run mistral:7b "est-ce que tu peux modifier des fichier xls ?" Oui, je peux lire et écrire dans les fichiers Excel (.xls et .xlsx) grâce à la bibliothèque
+# Python `openpyxl`. Voici un exemple de code qui ouvre un fichier Excel, lit ses données, modifie une cellule, enregistre le fichier, puis ferme le fichier.
+# =================================================================================================
+```python
+import openpyxl
+
+# Ouvre le livre de calcul avec openpyxl
+workbook = openpyxl.load_workbook('example.xlsx')
+
+# Sélectionne la feuille (on pourrait aussi utiliser 'Sheet1' ou l'index)
+sheet = workbook['Sheet2']
+
+# Modifie une cellule avec la valeur 'Nouvelle valeur'
+sheet['A1'] = 'Nouvelle valeur'
+
+# Sauvegarde les modifications et ferme le livre de calcul
+workbook.save('example.xlsx')
+```
+# =================================================================================================
+# Dans cet exemple, nous ouvrons un fichier Excel `example.xlsx`, sélectionnons la feuille nommée 'Sheet2', modifions une cellule A1 à la valeur de 'Nouvelle valeur', enregistrons les  modifications et fermons le fichier.
+# Avec cette bibliothèque, vous pouvez également créer des fichiers Excel vides, lire plusieurs feuilles dans un seul livre de calcul, ou effectuer d'autres tâches plus avancées sur les données Excel.
+
+
+# Ollama : Si tu utilises Ollama, le modèle s'exécute en local et peut accéder aux fichiers via des scripts Python ou des commandes shell. Par exemple, tu peux écrire un script Python qui lit un fichier et envoie son contenu au modèle via l'API d'Ollama.
+# LM Studio : Fonctionne de manière similaire. Tu peux configurer un script qui lit les fichiers et les transmet au modèle.
+# FastAPI/Flask : Si tu héberges le modèle via une API, tu peux créer des endpoints pour lire/écrire dans des dossiiers spécifiques.
+
+Exemple avec Python :
+# =================================================================================================
+import ollama  # ou une autre bibliothèque selon ton setup
+
+def lire_fichier(chemin):
+    with open(chemin, 'r') as f:
+        return f.read()
+
+# Envoyer le contenu au modèle
+contenu = lire_fichier("/chemin/vers/ton/fichier.txt")
+reponse = ollama.generate(model="mistral", prompt=f"Voici le contenu du fichier : {contenu}")
+print(reponse)
+# =================================================================================================
+# Permissions du Système :
+# Assure-toi que l'utilisateur qui exécute le modèle (ou le serveur) a les droits de lecture/écriture sur les dossiers concernés.
+
+# Sécurité et Bonnes Pratiques
+
+# Ne donne jamais accès à des dossiers sensibles (ex : /etc, C:\Windows).
+# Utilise des chemins relatifs ou absolus pour éviter les erreurs.
+# Limite les permissions : donne uniquement les droits nécessaires (ex : lecture seule si le modèle n'a pas besoin d'écrire).
+# =================================================================================================
+#                                   Exemple Concret avec Ollama
+# =================================================================================================
+# Lire un fichier et le passer au modèle
+cat /chemin/vers/fichier.txt | ollama run mistral
+
+import ollama
+
+with open("/chemin/vers/fichier.txt", "r") as f:
+    contenu = f.read()
+
+reponse = ollama.generate(model="mistral", prompt=f"Analyse ce texte : {contenu}")
+print(reponse)
+# =================================================================================================
+#  Cas d'Usage Avancé
+# Si tu veux automatiser l'accès à plusieurs dossiers :
+
+# Crée un index des fichiers (ex : une base de données SQLite ou un JSON) pour faciliter la recherche.
+# Utilise des scripts de surveillance (ex : watchdog en Python) pour détecter les changements dans les dossiers.
+
+# =================================================================================================
+# peux-tu me donner un script complet afin que le model ollama -> mistral:7b installer sur ma vm, lise un fichier xls à tel emplacement. Puis à partir des données collecter, il créer un xls en ne gardant que les valeurs de la colonne c = à "valeur" il copie toute les ligne correspondante ?
+
+# Voici un script Python complet qui utilise la bibliothèque pandas pour lire un fichier Excel (.xls ou .xlsx), filtrer les lignes où la colonne C a la valeur spécifiée (par exemple "valeur"), puis sauvegarder le résultat dans un nouveau fichier Excel. Ensuite, le script envoie un résumé des données filtrées au modèle Mistral:7b via l'API Ollama.
+# =================================================================================================
+# Installer les dépendances :
+pip install pandas openpyxl ollama
+
+# pandas : pour manipuler les fichiers Excel.
+# openpyxl : pour gérer les fichiers Excel (surtout .xlsx).
+# ollama : pour interagir avec le modèle Mistral:7b.
+# =================================================================================================
+Script Python
+
+import pandas as pd
+import ollama
+
+# 1. Chemin vers le fichier Excel d'entrée et de sortie
+fichier_entree = "/chemin/vers/ton/fichier_entree.xls"
+fichier_sortie = "/chemin/vers/ton/fichier_sortie.xls"
+valeur_a_filtrer = "valeur"  # Remplace par la valeur que tu cherches dans la colonne C
+
+# 2. Lire le fichier Excel
+try:
+    df = pd.read_excel(fichier_entree)
+    print(f"Fichier '{fichier_entree}' lu avec succès.")
+except Exception as e:
+    print(f"Erreur lors de la lecture du fichier : {e}")
+    exit()
+
+# 3. Filtrer les lignes où la colonne C = "valeur"
+# (Assure-toi que la colonne C est bien nommée ou indexée correctement)
+# Si la colonne C est la 3ème colonne (index 2 en Python) :
+colonne_c = df.iloc[:, 2]  # 3ème colonne (index 2)
+df_filtre = df[colonne_c == valeur_a_filtrer]
+
+# 4. Sauvegarder le résultat dans un nouveau fichier Excel
+try:
+    df_filtre.to_excel(fichier_sortie, index=False)
+    print(f"Fichier filtré sauvegardé sous '{fichier_sortie}'.")
+except Exception as e:
+    print(f"Erreur lors de la sauvegarde du fichier : {e}")
+    exit()
+
+# 5. Préparer un résumé des données filtrées pour le modèle
+resume = f"""
+Voici un résumé des données filtrées depuis le fichier '{fichier_entree}' :
+- Nombre total de lignes : {len(df)}
+- Nombre de lignes filtrées (colonne C = '{valeur_a_filtrer}') : {len(df_filtre)}
+- Exemple des premières lignes filtrées :
+{df_filtre.head()}
+"""
+
+# 6. Envoyer le résumé au modèle Mistral:7b via Ollama
+try:
+    reponse = ollama.generate(
+        model="mistral:7b",
+        prompt=resume + "\nPeux-tu analyser ces données et me donner un aperçu des tendances ou des informations intéressantes ?"
+    )
+    print("\nRéponse du modèle Mistral:7b :")
+    print(reponse["response"])
+except Exception as e:
+    print(f"Erreur lors de l'appel au modèle : {e}")
+# =================================================================================================
+# Explications
+
+# Lecture du fichier : Le script lit le fichier Excel avec pandas.
+# Filtrage : Il filtre les lignes où la colonne C (3ème colonne) est égale à "valeur".
+# Sauvegarde : Le résultat est sauvegardé dans un nouveau fichier Excel.
+# Interaction avec Mistral : Un résumé des données est envoyé au modèle pour analyse.
+# =================================================================================================
+# Personnalisation
+
+# Remplace /chemin/vers/ton/fichier_entree.xls et /chemin/vers/ton/fichier_sortie.xls par les chemins réels.
+# Si ta colonne C a un nom spécifique (ex : "Statut"), utilise df[df["Statut"] == valeur_a_filtrer] au lieu de df.iloc[:, 2].
+# =================================================================================================
+# Exécution
+
+# Enregistre le script sous filtrer_excel.py.
+# Exécute-le avec :
+
+python3 filtrer_excel.py
+# =================================================================================================
+# Remarques
+
+# Si ton fichier est au format .xls (ancien format Excel), pandas peut nécessiter le moteur xlrd (pip install xlrd).
+# Pour des fichiers très volumineux, optimise la gestion de la mémoire (ex : lire par chunks).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

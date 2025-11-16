@@ -1,0 +1,178 @@
+Mémoire requise pour Llama 3.1 70B
+Calcul selon la précision :
+PrécisionTaille du modèleRAM requiseCommentaireFP16 (16-bit)~140 GB160+ GBPrécision maximale, impossible sur votre configQ8 (8-bit)~70 GB90+ GBHaute qualité, juste au-dessus de vos 96 GBQ6_K~54 GB70+ GB✅ Faisable sur votre configQ5_K_M~48 GB65+ GB✅ Recommandé - Bon équilibreQ4_K_M~40 GB55+ GB✅ Optimal - Très bonne qualitéQ4_0~38 GB50+ GB✅ AcceptableQ3_K_M~30 GB45+ GBQualité dégradée
+
+
+Précision      - Taille du modèle - RAM requise - Commentaire
+FP16 (16-bit)  - ~140 GB          - 160+ GB     - Précision maximale, impossible sur votre config
+Q8 (8-bit)     - ~70 GB           - 90+ GB      - Haute qualité, juste au-dessus de vos 96 GB
+Q6_K           - ~54 GB           - 70+ GB      - ✅ Faisable sur votre config
+Q5_K_M         - ~48 GB           - 65+ GB      - ✅ Recommandé - Bon équilibre
+Q4_K_M         - ~40 GB           - 55+ GB      - ✅ Optimal - Très bonne qualité
+Q4_0           - ~38 GB           - 50+ GB      - ✅ Acceptable
+Q3_K_M         - ~30 GB           - 45+ GB      - Qualité dégradée
+
+Recommandation pour votre setup (96 GB RAM)
+Allouez 80-85 GB à la VM pour faire tourner Llama 3.1 70B en Q4_K_M :
+
+# Sur jarvis-kde, modifier la RAM de la VM
+sudo virsh shutdown vm-ia
+
+# Éditer la config
+sudo virsh edit vm-ia
+
+Modifier la RAM :
+xml
+<memory unit='KiB'>87031808</memory>  <!-- 85 GB -->
+<currentMemory unit='KiB'>87031808</currentMemory>
+xml
+
+# Redémarrer
+sudo virsh start vm-ia
+
+📥 Installation dans la VM
+
+# Se connecter à la VM
+ssh laurent@192.168.1.198
+
+# Télécharger Llama 3.1 70B quantifié en Q4_K_M (~40 GB)
+ollama pull llama3.1:70b-instruct-q4_K_M
+
+# Ou version Q5 (meilleure qualité, ~48 GB)
+ollama pull llama3.1:70b-instruct-q5_K_M
+
+# Lister les modèles
+ollama list
+
+⚙️ Configuration Ollama optimale
+
+# Configurer Ollama pour utiliser plus de RAM
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+sudo nano /etc/systemd/system/ollama.service.d/override.conf
+
+# Configurer Ollama pour utiliser plus de RAM
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+sudo nano /etc/systemd/system/ollama.service.d/override.conf
+
+Contenu :
+
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+Environment="OLLAMA_MAX_LOADED_MODELS=1"
+Environment="OLLAMA_NUM_PARALLEL=1"
+Environment="OLLAMA_KEEP_ALIVE=30m"
+# Limiter à 75 GB de RAM
+Environment="OLLAMA_MAX_VRAM=80530636800"
+
+# Appliquer
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+
+ Test de performance
+
+# Test simple
+time ollama run llama3.1:70b-instruct-q4_K_M "Explique-moi la théorie de la relativité en 3 phrases"
+
+# Monitoring pendant l'utilisation
+watch -n 1 'free -h; echo "---"; ps aux | grep ollama | head -5'
+
+📊 Performance attendue sur votre config
+Avec AMD Ryzen 16 cœurs/32 threads + 85 GB RAM :
+
+Métrique                 - Q4_K_M   - Q5_K_M
+Chargement initial       - 15-30s   - 20-40s
+Tokens/seconde           - 8-15 t/s - 6-12 t/s
+Latence première réponse - 2-4s     - 3-5s
+RAM utilisée             - 45-55 GB - 55-65 GB
+
+⚡ Optimisations possibles
+1. Augmenter les threads CPU pour Ollama
+
+sudo nano /etc/systemd/system/ollama.service.d/override.conf
+
+Ajouter :
+
+ini
+Environment="OLLAMA_NUM_THREADS=28"  # Utiliser 28 threads sur 32
+ini
+
+2. Utiliser mmap pour réduire l'usage RAM
+
+# Forcer le memory mapping (plus lent mais moins de RAM)
+Environment="OLLAMA_MMAP=1"
+
+3. Offload partiel (si vous aviez un GPU)
+Si vous ajoutez un GPU NVIDIA plus tard :
+
+Environment="OLLAMA_NUM_GPU=1"
+Environment="OLLAMA_GPU_LAYERS=40"  # 40 couches sur GPU, reste sur CPU
+
+**Configuration VM suggérée :**
+```
+VM normale : 32 GB RAM → Modèles jusqu'à 14B
+VM "heavy" : 85 GB RAM → Llama 70B quand nécessaire
+
+Script de bascule RAM
+
+#!/bin/bash
+# switch-vm-ram.sh - Sur jarvis-kde
+
+MODE="$1"
+
+case "$MODE" in
+    normal)
+        RAM="32768"  # 32 GB
+        echo "Configuration normale (32 GB)"
+        ;;
+    heavy)
+        RAM="87031808"  # 85 GB en KiB
+        echo "Configuration heavy (85 GB)"
+        ;;
+    *)
+        echo "Usage: $0 {normal|heavy}"
+        exit 1
+        ;;
+esac
+
+sudo virsh shutdown vm-ia
+sleep 10
+
+sudo virsh setmaxmem vm-ia ${RAM}K --config
+sudo virsh setmem vm-ia ${RAM}K --config
+
+sudo virsh start vm-ia
+
+echo "✓ VM redémarrée avec $RAM RAM"
+
+📋 SCRIPT DE CONFIGURATION AUTOMATIQUE
+Créer /tmp/fix-vm-ram.sh sur jarvis-kde :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

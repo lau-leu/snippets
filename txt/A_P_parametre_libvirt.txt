@@ -1,4 +1,4 @@
-angage: bash
+langage: bash
 nom: libvirt_autorisation_parametre
 titre: parametrage autorisation libvirt
 description: parametrage autorisation libvirt afin d'éviter sudo

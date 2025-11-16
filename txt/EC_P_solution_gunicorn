@@ -1,0 +1,133 @@
+
+# Solution complète pour éviter les blocages du port 8000
+
+# ===================================================================
+#                  1. Script de nettoyage automatique
+# ===================================================================
+
+sudo nano /usr/local/bin/cleanup-gunicorn.sh
+
+#!/bin/bash
+# Nettoyer les processus Gunicorn avant démarrage
+
+echo "Nettoyage des processus Gunicorn..."
+
+# Supprimer le fichier PID s'il existe
+if [ -f /var/run/gunicorn/gunicorn.pid ]; then
+    echo "Suppression du fichier PID..."
+    rm -f /var/run/gunicorn/gunicorn.pid
+fi
+
+# Tuer tous les processus Gunicorn liés à ce projet
+echo "Arrêt des processus Gunicorn..."
+pkill -9 -f "gunicorn.*myproject.wsgi" || true
+
+# Libérer le port 8000 si occupé
+PORT_PID=$(lsof -ti:8000)
+if [ ! -z "$PORT_PID" ]; then
+    echo "Libération du port 8000 (PID: $PORT_PID)..."
+    kill -9 $PORT_PID || true
+fi
+
+# Attendre un peu
+sleep 2
+
+echo "Nettoyage terminé."
+exit 0
+
+
+sudo chmod +x /usr/local/bin/cleanup-gunicorn.sh
+
+
+# ===================================================================
+#                   2. Service systemd de nettoyage
+# ===================================================================
+
+sudo nano /etc/systemd/system/cleanup-gunicorn.service
+
+[Unit]
+Description=Cleanup Gunicorn processes before start
+Before=gunicorn.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cleanup-gunicorn.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
+
+# ===================================================================
+#                   3. Améliorer le service Gunicorn
+# ===================================================================
+
+sudo nano /etc/systemd/system/gunicorn.service
+
+# Remplacez TOUT le contenu par :
+
+[Unit]
+Description=Gunicorn daemon for Django application
+After=network.target postgresql.service
+Wants=cleanup-gunicorn.service
+
+[Service]
+Type=notify
+User=laurent
+Group=www-data
+WorkingDirectory=/opt/django_app
+Environment="PATH=/opt/django_app/venv/bin"
+
+RuntimeDirectory=gunicorn
+RuntimeDirectoryMode=0755
+
+ExecStartPre=/usr/local/bin/cleanup-gunicorn.sh
+
+ExecStart=/opt/django_app/venv/bin/gunicorn --bind 127.0.0.1:8000 --workers 3 --timeout 60 --graceful-timeout 30 --access-logfile /var/log/gunicorn/access.log --error-logfile /var/log/gunicorn/error.log --log-level info --pid /var/run/gunicorn/gunicorn.pid myproject.wsgi:application
+
+ExecReload=/bin/kill -s HUP $MAINPID
+
+ExecStop=/bin/kill -s TERM $MAINPID
+TimeoutStopSec=10
+
+ExecStopPost=/bin/rm -f /var/run/gunicorn/gunicorn.pid
+
+KillMode=mixed
+KillSignal=SIGTERM
+
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+
+# 4. Activer et démarrer
+
+# Recharger systemd
+sudo systemctl daemon-reload
+
+# Activer le service de nettoyage
+sudo systemctl enable cleanup-gunicorn.service
+
+# Nettoyer manuellement maintenant
+sudo /usr/local/bin/cleanup-gunicorn.sh
+
+# Redémarrer Gunicorn
+sudo systemctl restart gunicorn
+
+# Vérifier le statut
+sudo systemctl status gunicorn
+
+
+
+
+
+
+
+

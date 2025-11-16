@@ -1,21 +1,54 @@
-# liste des commandes création LVM sur 3 hdd WD red 4To
+langage: bash
+nom: partition_fdisk_gdisk_lvm
+titre: création de partion
+description: étapes de création d'une LVM, Logical Volume Manager. Un groupe de volumes permet de regrouper plusieurs volumes physiques (PV, Physical Volumes) en une seule entité logique, à partir de laquelle vous pouvez ensuite créer des volumes logiques (LV, Logical Volumes).
+tags: lvm,LVM,hdd,sata,pvcreate,vgcreate,lvcreate,virtuel,NFS,nfs,gdisk,lsblk,fdisk,blkid
 
+# CRÉATION LVM SUR 3 HDD WD RED 4TO
+
+# ===================================================================
+# ÉTAPE  1 : Création des partitions
+# ===================================================================
+# Création des partitions Linux LVM sur les disques
+# Type : Linux LVM (code 8e dans fdisk/gdisk).
+# Utilité : Ce type indique au système que la partition sera utilisée par LVM pour créer des volumes physiques (PV).
+
+# Comment créer une partition de type "Linux LVM"
+# Avec fdisk (pour les disques < 2 To ou en mode DOS)
+# Lancez fdisk pour chaque disque :
+sudo fdisk /dev/sda
+
+# (Répétez pour /dev/sdc et /dev/sdd.)
+#Dans fdisk :
+# - Tapez n pour créer une nouvelle partition.
+# - Choisissez p (primaire) et acceptez les valeurs par défaut pour utiliser tout le disque.
+# - Tapez t pour modifier le type de partition.
+# - Sélectionnez la partition (généralement 1).
+# - Entrez 8e pour définir le type Linux LVM.
+# - Tapez w pour sauvegarder les changements.
+
+#Avec gdisk (pour les disques > 2 To ou en mode GPT)
+#Lancez gdisk :
 sudo gdisk /dev/sda
 sudo gdisk /dev/sdb
 sudo gdisk /dev/sdc
 
-#Command (? for help): n
-#Partition number (1-128, default 1):
-#First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
-#First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
-#Last sector (2048-7814037134, default = 7814035455) or {+-}size{KMGTP}:
-#Current type is 8300 (Linux filesystem)
-#Hex code or GUID (L to show codes, Enter = 8300): 8e00
-#Changed type of partition to 'Linux LVM'
-#Command (? for help): w
+# -->Command (? for help): n
+# -->Partition number (1-128, default 1):
+# Acceptez les valeurs par défaut pour utiliser tout le disque.
+# -->First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
+# -->First sector (2048-7814037134, default = 2048) or {+-}size{KMGTP}:
+# -->Last sector (2048-7814037134, default = 7814035455) or {+-}size{KMGTP}:
+# -->Current type is 8300 (Linux filesystem)
+# Entrez 8e00 pour définir le type Linux LVM
+# -->Hex code or GUID (L to show codes, Enter = 8300): 8e00
+# -->Changed type of partition to 'Linux LVM'
+# Tapez w pour sauvegarder
+# -->Command (? for help): w
 
 #sudo pvcreate /dev/sda /dev/sdb /dev/sdc #pas sûr de l'utilité si gdisk réalisé
 
+# Création des /dev
 sudo vgcreate vg-ai-data /dev/sda1 /dev/sdb1 /dev/sdc1
 #WARNING: dos signature detected on /dev/sda1 at offset 510. Wipe it? [y/n]: y
 #  Wiping dos signature on /dev/sda1.
@@ -24,28 +57,72 @@ sudo vgcreate vg-ai-data /dev/sda1 /dev/sdb1 /dev/sdc1
 #  Physical volume "/dev/sdc1" successfully created.
 #  Volume group "vg-ai-data" successfully created
 
-sudo lvcreate -L 500G -n lv-datasets vg-ai-data
+# La commande vgcreate est utilisée sous Linux pour créer un groupe de volumes (Volume Group, VG) dans le système de gestion de volumes logiques (LVM, Logical Volume Manager). Un groupe de volumes permet de regrouper plusieurs volumes physiques (PV, Physical Volumes) en une seule entité logique, à partir de laquelle vous pouvez ensuite créer des volumes logiques (LV, Logical Volumes).
+
+# vgcreate <nom_du_groupe_de_volumes> <volume_physique_1> [volume_physique_2 ...]
+# options de la commande
+# -s <taille> # Définit la taille des extents physiques (en Mo, Go, etc.). Par défaut, LVM utilise 4 Mo.
+# -l <nombre> # Spécifie le nombre maximal d'extents logiques.
+# -p <nombre> # Définit le nombre maximal de volumes physiques dans le groupe.
+
+# Vérification
+# Pour vérifier que le groupe de volumes a bien été créé, utilisez :
+vgdisplay
+
+# ou
+vgs
+
+# À quoi ça sert ?
+# - Flexibilité : Ajoutez ou retirez des volumes physiques sans interruption de service.
+# - Gestion centralisée : Créez des volumes logiques de tailles variables à partir du groupe.
+# - Optimisation de l'espace : Utilisez efficacement l'espace disque disponible.
+
+# Après avoir créé les partitions, vérifiez leur type avec :
+lsblk -f
+# ou
+sudo blkid
+# Vous devriez voir quelque chose comme : /dev/sdb1: UUID="..." TYPE="LVM2_member"
+
+# Compatibilité : LVM ne reconnaîtra que les partitions de type Linux LVM (8e) comme éligibles pour devenir des volumes physiques (PV).
+# Évite les erreurs : Si le type est incorrect (par exemple, Linux filesystem), LVM refusera de créer un PV sur cette partition.
+
+#5. Cas particulier : Disques entiers sans partition
+# Si vous souhaitez utiliser tout le disque (sans partition), vous pouvez directement créer un PV sur le disque entier (par exemple, /dev/sdb au lieu de /dev/sdb1). Cependant, cette méthode est moins flexible et non recommandée pour les environnements de production.
+
+# Résumé des étapes clés
+# - Créez une partition sur chaque disque.
+# - Définissez le type de partition sur Linux LVM (8e).
+# - Sauvegardez les changements.
+# - Vérifiez avec lsblk -f ou blkid.
+
+# ===================================================================
+# ÉTAPE  2 : Création de volumes simles, miroirs
+# ===================================================================
+# Création de volumes simples
+#sudo lvcreate -L 500G -n lv-datasets vg-ai-data
 #  Logical volume "lv-datasets" created.
-sudo lvcreate -L 500G -n lv-models vg-ai-data
+#sudo lvcreate -L 500G -n lv-models vg-ai-data
 #  Logical volume "lv-models" created.
 
 ### modification du choix, passer en mirroring
 #Étape 1 : Supprimer les volumes existants (si déjà créés)
 # Vérifier ce qui existe
-sudo lvdisplay vg-ai-data
+#sudo lvdisplay vg-ai-data
 
 # Démonter si montés
-sudo umount /mnt/ai-storage/datasets 2>/dev/null
-sudo umount /mnt/ai-storage/models 2>/dev/null
+#sudo umount /mnt/ai-storage/datasets 2>/dev/null
+#sudo umount /mnt/ai-storage/models 2>/dev/null
 
 # Supprimer les volumes logiques
-sudo lvremove /dev/vg-ai-data/lv-datasets
-sudo lvremove /dev/vg-ai-data/lv-models
+#sudo lvremove /dev/vg-ai-data/lv-datasets
+#sudo lvremove /dev/vg-ai-data/lv-models
 
 # Vérifier que le VG existe toujours
-sudo vgdisplay vg-ai-data
+#sudo vgdisplay vg-ai-data
 
-#Étape 2 : Créer les volumes miroirs
+# ===================================================================
+
+#Créer les volumes miroirs (peut etre long voir commande watch pour l'avancement)
 #Option A : Miroir sur 2 disques (recommandé avec 3 disques)
 
 # Volume pour les datasets (500 GB mirroré sur 2 disques)
@@ -71,17 +148,17 @@ sudo lvcreate --type raid1 \
 #Option B : Miroir sur 3 disques (maximum redondance)
 
 # Avec 2 miroirs (3 copies totales)
-sudo lvcreate --type raid1 \
-  --mirrors 2 \
-  --size 300G \
-  --name lv-datasets \
-  vg-ai-data
+#sudo lvcreate --type raid1 \
+#  --mirrors 2 \
+#  --size 300G \
+#  --name lv-datasets \
+#  vg-ai-data
 
-sudo lvcreate --type raid1 \
-  --mirrors 2 \
-  --size 300G \
-  --name lv-models \
-  vg-ai-data
+#sudo lvcreate --type raid1 \
+#  --mirrors 2 \
+#  --size 300G \
+#  --name lv-models \
+# vg-ai-data
 
 #Explication :
 
@@ -89,8 +166,9 @@ sudo lvcreate --type raid1 \
 # Perte de 2 disques = données toujours disponibles
 # Consomme 900 GB x 3 d'espace physique pour 300 GB utilisables
 
-#Étape 3 : Vérifier la création
-
+# ===================================================================
+# ETAPE 3 : Vérifier l'état d' avancement et la création
+# ===================================================================
 # Voir les détails des volumes RAID
 sudo lvs -a -o +devices vg-ai-data
 
@@ -115,17 +193,15 @@ sudo lvdisplay -m /dev/vg-ai-data/lv-datasets
 # Voir la répartition sur les disques physiques
 sudo lvs -a -o +devices vg-ai-data
 
-
-
-
-#Étape 4 : Attendre la synchronisation initiale
+# ===================================================================
+# ETAPE 4 : Attendre la synchronisation initiale
+# ===================================================================
 # Le copy_percent doit atteindre 100.00
 # Cela peut prendre plusieurs heures selon la taille
 
 # ===================================================================
 # ÉTAPE 5 : Formater (APRÈS synchronisation complète)
 # ===================================================================
-
 sudo mkfs.ext4 /dev/vg-ai-data/lv-datasets
 sudo mkfs.ext4 /dev/vg-ai-data/lv-models
 
@@ -202,7 +278,7 @@ df -h | grep ai-storage
 # Script 1: check-raid-ai.sh (voir ci-dessus)
 sudo nano /usr/local/bin/check-raid-ai.sh
 
-### script ###
+### script 1 ###
 #!/bin/bash
 # /usr/local/bin/check-raid-ai.sh
 
@@ -270,11 +346,11 @@ Position 9: Santé RAID
   - r = refresh needed
   - m = mismatches detected
 
-### fin script ###
+### fin script 1 ###
 
 sudo chmod +x /usr/local/bin/check-raid-ai.sh
 
-
+# ===================================================================
 # Script 2: raid-integrity-check.sh (voir ci-dessus)
 sudo nano /usr/local/bin/raid-integrity-check.sh
 
@@ -434,7 +510,7 @@ sudo resize2fs /dev/vg-ai-data/lv-datasets
 # Vérifier
 df -h /mnt/ai-storage/datasets
 
-
+# ===================================================================
 
 
 

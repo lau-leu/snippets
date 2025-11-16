@@ -1,0 +1,152 @@
+# exemple pour un acces ssh à partir d'un git local initié
+# Créer un repository sur github, si possible du meme non que le dossier où se trouve le dépot local.
+# si inexistante, créer une clé ssh
+# 1.Générez une clé SSH (si vous n’en avez pas) :
+ssh-keygen -t ed25519 -C "votre_email@example.com"
+# 2.Ajoutez la clé à votre compte GitHub :
+# Affichez votre clé publique :
+cat ~/.ssh/id_ed25519.pub
+# Allez dans Settings → SSH and GPG keys → New SSH key.
+# Collez votre clé et enregistrez.
+# 3.Changez l’URL du dépôt en SSH directement dans github
+# ajoutez depuis la machine local, dossier où se trouve .git
+git remote add origin ssh://git@github.com:22/lau-leu/snippets.git
+# où modifier
+git remote set origin ssh://git@github.com:/lau-leu/snippets.git
+# pour modifier l'url par exemple pas le bon port
+git remote set-url origin ssh://git@github.com:22/lau-leu/snippets.git
+# pour voir l'url
+git remote -v
+# pour envoyer le depot local vers github
+git push -u origin main
+
+
+
+
+
+
+
+# ===================================================================
+#           1. Créer un token d’accès personnel sur GitHub
+# ===================================================================
+# Étapes :
+
+# 1.Connectez-vous à votre compte GitHub.
+# 2.Cliquez sur votre photo de profil (en haut à droite) → Settings (Paramètres).
+# 3.Dans le menu de gauche, allez dans Developer settings (Paramètres de développeur).
+# 4.Cliquez sur Personal access tokens → Tokens (classic).
+# 5.Cliquez sur Generate new token → Generate new token (classic).
+# 6.Donnez un nom à votre token (ex: "Token pour mon projet Django").
+# 7.Cochez les permissions :
+#     - repo (accès complet aux dépôts)
+#     - workflow (si vous utilisez GitHub Actions)
+#     - admin:repo_hook (si vous utilisez des webhooks)
+# 8.Cliquez sur Generate token.
+# 9.Copiez le token (il ne sera plus visible après cette étape).
+
+
+# ===================================================================
+#             2. Utiliser le token pour s’authentifier
+# ===================================================================
+# Méthode 1 : Utiliser le token dans l’URL
+# Remplacez l’URL de votre dépôt par :
+
+https://<VOTRE_TOKEN>@github.com/lau-leu/appliweb.git
+
+# Exemple :
+
+git remote set-url origin https://ghp_abc123...@github.com/lau-leu/appliweb.git
+
+# (Remplacez ghp_abc123... par votre token.)
+
+# Méthode 2 : Utiliser le token comme mot de passe
+# Quand Git vous demande un mot de passe, collez le token à la place.
+
+
+# ===================================================================
+# 3. Alternative : Utiliser une clé SSH (recommandé pour plus de sécurité)
+# ===================================================================
+# Si vous préférez utiliser SSH (plus sécurisé et sans besoin de token à chaque push) :
+
+
+# 1.Générez une clé SSH (si vous n’en avez pas) :
+
+ssh-keygen -t ed25519 -C "votre_email@example.com"
+
+# (Appuyez sur Entrée pour accepter les valeurs par défaut.)
+
+# 2.Ajoutez la clé à votre compte GitHub :
+# Affichez votre clé publique :
+
+cat ~/.ssh/id_ed25519.pub
+
+# Copiez tout le contenu (ex: ssh-ed25519 AAAAC3...).
+# Allez dans Settings → SSH and GPG keys → New SSH key.
+# Collez votre clé et enregistrez.
+
+# 3.Changez l’URL du dépôt en SSH :
+
+git remote set-url origin git@github.com:lau-leu/appliweb.git
+
+# Puis :
+
+git push -u origin main
+
+# ===================================================================
+
+# 1. Le fingerprint n’est pas la clé elle-même
+#   - Le fingerprint est juste une empreinte (une version raccourcie et unique) de votre clé publique.
+#   - Ce n’est pas une clé secrète : il ne permet pas de se connecter à votre compte.
+#   - Il sert uniquement à vérifier que la clé que vous utilisez est bien la vôtre.
+
+# 2. Ce que vous devez stocker en sécurité
+#   - Votre clé privée (~/.ssh/id_ed25519 ou ~/.ssh/id_rsa) :
+#       - Ne la partagez jamais et ne la stockez pas en ligne.
+#       - Elle doit rester uniquement sur votre machine (dans le dossier ~/.ssh/).
+#   - Votre clé publique (~/.ssh/id_ed25519.pub ou ~/.ssh/id_rsa.pub) :
+#       - Vous pouvez la copier et l’ajouter à GitHub ou d’autres services.
+
+# 3. Ce que fait GitHub avec le fingerprint
+#   - Quand vous ajoutez votre clé publique à GitHub, le site affiche son fingerprint pour que vous puissiez vérifier qu’il s’agit bien de la bonne clé avant de l’enregistrer.
+#   - Une fois ajouté, GitHub stocke uniquement la clé publique, pas le fingerprint.
+
+# ===================================================================
+
+récupérer les changements distants avant de pousser les vôtres.
+
+git pull --rebase origin main
+
+# Cela va fusionner les changements de GitHub avec votre branche locale.
+# Si vous voyez des conflits, résolvez-les, puis continuez le rebase avec :
+
+git rebase --continue
+
+# Si git pull --rebase échoue
+# Vous pouvez aussi faire un merge classique :
+
+git pull origin main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
