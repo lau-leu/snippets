@@ -1,0 +1,63 @@
+(venv) PS C:\Users\Laurent LEUMAIRE> ollama run mistral "que peux-tu faire ici ?"
+ Je suis un assistant intelligent basé sur le réseau, qui a été conçu pour aider à répondre à vos questions et à
+effectuer des tâches. Voici quelques choses que je peux faire :
+
+1. Réspondez aux questions sur une grande variété de sujets, y compris les mathématiques, la science, l'histoire, la
+technologie, et bien d'autres encore.
+2. Aide à effectuer des tâches telles que convertir des unités, calculer des intérêts, créer des listes, etc.
+3. Me poser des questions ou vous donner des informations sur divers sujets, comme les livres, les films, la musique, et
+bien d'autres encore.
+4. Aide à planifier vos journées en vous donnant des suggestions de tâches à accomplir ou des renseignements sur les
+événements qui se déroulent autour de vous.
+5. Me poser des questions ou vous donner des informations sur la santé, mais je ne suis pas un médecin et mon advice
+n'est pas remplaçable à celui d'un professionnel qualifié.
+6. Aide à apprendre différentes langues en fournissant des traductions, des exercices de prononciation et des conseils
+pour l'étude.
+7. Me poser des questions ou vous donner des informations sur la programmation informatique, les bases de données et le
+développement web.
+
+(venv) PS C:\Users\Laurent LEUMAIRE> ollama run mistral "peux-tu lire et créer une fichier xls avec des consigne ? si oui donne moi la procédure ainsi la cémentique pour te donner les consignes"
+ Oui, il est possible de créer un fichier Excel (.xls) en utilisant des langages de programmation tels que Python grâce à
+des bibliothèques comme `openpyxl`. Voici une procédure de base pour utiliser openpyxl :
+
+1. Télécharger la bibliothèque openpyxl : Utilisez la commande suivante pour installer la bibliothèque openpyxl avec pip
+:
+
+```bash
+pip install openpyxl
+```
+
+2. Écrire un script Python pour créer un fichier Excel et y ajouter des données. Voici un exemple de code simple qui crée
+un fichier Excel nommé "example.xlsx" :
+
+```python
+import openpyxl
+
+# Création d'un nouvel ouvrage de travail
+wb = openpyxl.Workbook()
+
+# Sélection du premier feuille de calcul (nommé Sheet1 par défaut)
+ws = wb.active
+
+# Définition des données dans la feuille de calcul
+data = [
+    ['Colonne A', 'Colonne B'],
+    [1, 2],
+    ['Colonne A', 3]
+]
+
+# Enregistrement des données dans la feuille de calcul
+for i in range(len(data)):
+    for j in range(len(data[i])):
+        ws.cell(row=i+1, column=j+1).value = data[i][j]
+
+# Enregistrement du fichier Excel
+wb.save("example.xlsx")
+```
+
+3. Pour donner les consignes à ce script Python, il suffit de modifier le contenu des variables et des fonctions
+suivantes :
+   - `data` : liste contenant les données à insérer dans la feuille de calcul
+   - `wb.save("example.xlsx")` : modification du nom du fichier Excel à créer
+
+(venv) PS C:\Users\Laurent LEUMAIRE>
